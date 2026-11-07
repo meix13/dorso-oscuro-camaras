@@ -2,8 +2,7 @@
    Dorso Oscuro - Modo Conversación de Cámaras (Foundry VTT v12 / v13 / v14)
    ========================================================================== */
 
-/* 1. Neutralizar el transform de #ui-middle / #ui-left / #ui-right cuando
-      el Modo Conversación está activo para que position:fixed ocupe toda la ventana */
+/* 1. Neutralizar el transform de #ui-middle / #ui-left / #ui-right si contienen #camera-views */
 body.do-cam-center-active:not(.do-cam-player-peek) #ui-middle:has(#camera-views),
 body.do-cam-center-active:not(.do-cam-player-peek) #ui-left:has(#camera-views),
 body.do-cam-center-active:not(.do-cam-player-peek) #ui-right:has(#camera-views) {
@@ -21,19 +20,28 @@ body.do-cam-center-active:not(.do-cam-player-peek) #ui-right {
     z-index: 35 !important;
 }
 
-/* Ocultar elementos inferiores del mapa que estorban sobre las cámaras (barra de macros, lista de jugadores y navegación de escenas) */
+/* Ocultar y desactivar por completo la barra de macros (#hotbar), lista de jugadores y navegación de escenas
+   en Modo Grande para que los slots de macros (que en Foundry v14 tienen pointer-events: all) NUNCA intercepten clics */
+body.do-cam-center-active:not(.do-cam-player-peek) #ui-bottom,
 body.do-cam-center-active:not(.do-cam-player-peek) #hotbar,
+body.do-cam-center-active:not(.do-cam-player-peek) #hotbar *,
+body.do-cam-center-active:not(.do-cam-player-peek) #action-bar,
 body.do-cam-center-active:not(.do-cam-player-peek) #players,
+body.do-cam-center-active:not(.do-cam-player-peek) #players *,
 body.do-cam-center-active:not(.do-cam-player-peek) #navigation,
-body.do-cam-center-active:not(.do-cam-player-peek) #scene-navigation {
+body.do-cam-center-active:not(.do-cam-player-peek) #navigation *,
+body.do-cam-center-active:not(.do-cam-player-peek) #scene-navigation,
+body.do-cam-center-active:not(.do-cam-player-peek) #scene-navigation * {
+    display: none !important;
+    visibility: hidden !important;
     opacity: 0 !important;
     pointer-events: none !important;
-    transition: opacity 0.25s ease;
 }
 
 /* Si está activa la opción de pausar Diálogos Centrales mientras las cámaras están en el centro */
 body.do-cam-center-active.do-cam-pause-dc:not(.do-cam-player-peek) #dc-speakers-stage {
     opacity: 0 !important;
+    visibility: hidden !important;
     pointer-events: none !important;
     transition: opacity 0.2s ease;
 }
@@ -54,19 +62,19 @@ body.do-cam-center-active:not(.do-cam-player-peek) #camera-views {
     min-height: 0 !important;
     max-width: none !important;
     max-height: none !important;
-    z-index: 26 !important; /* Encima de #board (0), debajo de Fichas/Diarios (.window-app/.application = 100) */
+    z-index: 32 !important; /* Por encima de #board (0) y #ui-middle (30), debajo de Fichas/Diarios (100) */
     display: flex !important;
     flex-direction: column !important;
     justify-content: center !important;
     align-items: center !important;
-    padding: 58px 28px 22px 68px !important;
+    padding: 54px 28px 44px 68px !important;
     border: none !important;
     pointer-events: all !important;
     box-sizing: border-box !important;
     transition: background 0.3s ease, right 0.25s ease;
 }
 
-/* Si el jugador o GM activa Ancho Completo o pliega el sidebar derecho */
+/* Si el jugador o GM activa Ancho Completo */
 body.do-cam-center-active.do-cam-fullscreen:not(.do-cam-player-peek) #camera-views {
     right: 0 !important;
 }
@@ -120,6 +128,37 @@ body.do-cam-center-active:not(.do-cam-player-peek) #camera-views .camera-contain
     box-sizing: border-box !important;
 }
 
+/* Mantener la barra nativa de controles de cámara/micrófono (#camera-views > .user-controls)
+   fija abajo a la izquierda también en Modo Grande y siempre clicable */
+body.do-cam-center-active:not(.do-cam-player-peek) #camera-views > .user-controls {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    width: var(--av-width, 300px) !important;
+    min-width: 240px !important;
+    height: 34px !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-evenly !important;
+    padding: 4px 8px !important;
+    margin: 0 !important;
+    background: rgba(9, 13, 24, 0.96) !important;
+    border-top: 1px solid #1e293b !important;
+    border-right: 1px solid #1e293b !important;
+    z-index: 95 !important;
+    pointer-events: all !important;
+    box-sizing: border-box !important;
+}
+
+#camera-views > .user-controls,
+#camera-views > .user-controls button,
+#camera-views .camera-view .control-bar,
+#camera-views .camera-view .control-bar button,
+#camera-views .camera-view .bottom .user-controls,
+#camera-views .camera-view .bottom .user-controls button {
+    pointer-events: all !important;
+}
+
 /* ==========================================================================
    3. TARJETAS INDIVIDUALES (.camera-view) EN MODO CONVERSACIÓN
    ========================================================================== */
@@ -153,6 +192,7 @@ body.do-cam-center-active:not(.do-cam-player-peek) #camera-views.minimized .came
 body.do-cam-center-active:not(.do-cam-player-peek) #camera-views .camera-view::after {
     border-radius: 12px !important;
     border: 2px solid rgba(255, 255, 255, 0.12) !important;
+    pointer-events: none !important;
     transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
 }
 
@@ -177,6 +217,13 @@ body.do-cam-center-active:not(.do-cam-player-peek) #camera-views .camera-view .v
     width: 100% !important;
     height: 100% !important;
     object-fit: cover !important;
+}
+
+/* Asegurar que los controles internos de cada cámara estén por encima del vídeo */
+body.do-cam-center-active:not(.do-cam-player-peek) #camera-views .camera-view .control-bar,
+body.do-cam-center-active:not(.do-cam-player-peek) #camera-views .camera-view .notification-bar,
+body.do-cam-center-active:not(.do-cam-player-peek) #camera-views .camera-view .bottom {
+    z-index: 12 !important;
 }
 
 /* Efecto visual cuando alguien está hablando */
@@ -263,7 +310,7 @@ body.do-cam-center-active.do-cam-layout-spotlight:not(.do-cam-player-peek) .do-c
 /* Cámara(s) en el Escenario Principal (arriba en grande) */
 body.do-cam-center-active.do-cam-layout-spotlight:not(.do-cam-player-peek) #camera-views .camera-view.do-spotlight-main {
     order: 1 !important;
-    height: min(56vh, 44vw) !important;
+    height: min(55vh, 43vw) !important;
     z-index: 2 !important;
     box-shadow: 0 20px 50px rgba(0, 0, 0, 0.92),
                 0 0 30px rgba(56, 189, 248, 0.35) !important;
@@ -271,13 +318,13 @@ body.do-cam-center-active.do-cam-layout-spotlight:not(.do-cam-player-peek) #came
 
 /* Si hay 2 personas hablando a la vez en el escenario principal, se reparten la fila superior */
 body.do-cam-center-active.do-cam-layout-spotlight:not(.do-cam-player-peek) #camera-views[data-spotlight-count="2"] .camera-view.do-spotlight-main {
-    height: min(49vh, 33vw) !important;
+    height: min(48vh, 33vw) !important;
 }
 
 /* Cámaras secundarias en la fila inferior */
 body.do-cam-center-active.do-cam-layout-spotlight:not(.do-cam-player-peek) #camera-views .camera-view:not(.do-spotlight-main) {
     order: 3 !important;
-    height: min(22vh, 15.5vw) !important;
+    height: min(21vh, 15vw) !important;
     opacity: 0.9;
 }
 
@@ -288,62 +335,138 @@ body.do-cam-center-active.do-cam-layout-spotlight:not(.do-cam-player-peek) #came
 
 /* Botón de Fijar Orador (Pin) sobre cada cámara (solo visible para el GM al pasar el ratón) */
 .do-cam-pin-btn {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    z-index: 15;
-    background: rgba(9, 13, 24, 0.85);
-    border: 1px solid #475569;
-    color: #cbd5e1;
-    width: 28px;
-    height: 28px;
-    border-radius: 6px;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    font-size: 12px;
-    transition: all 0.15s ease;
-    pointer-events: all;
+    position: absolute !important;
+    top: 8px !important;
+    right: 8px !important;
+    z-index: 18 !important;
+    background: rgba(9, 13, 24, 0.85) !important;
+    border: 1px solid #475569 !important;
+    color: #cbd5e1 !important;
+    width: 28px !important;
+    height: 28px !important;
+    min-height: 28px !important;
+    padding: 0 !important;
+    border-radius: 6px !important;
+    display: none !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    font-size: 12px !important;
+    transition: all 0.15s ease !important;
+    pointer-events: all !important;
 }
 
 body.do-cam-center-active:not(.do-cam-player-peek) .camera-view:hover .do-cam-pin-btn,
 body.do-cam-center-active:not(.do-cam-player-peek) .camera-view .do-cam-pin-btn.is-pinned {
-    display: inline-flex;
+    display: inline-flex !important;
 }
 
 .do-cam-pin-btn:hover {
-    background: #1e293b;
-    border-color: #38bdf8;
-    color: #fff;
+    background: #1e293b !important;
+    border-color: #38bdf8 !important;
+    color: #fff !important;
 }
 
 .do-cam-pin-btn.is-pinned {
-    background: #f59e0b;
-    border-color: #fbbf24;
-    color: #090d16;
-    box-shadow: 0 0 12px rgba(245, 158, 11, 0.7);
+    background: #f59e0b !important;
+    border-color: #fbbf24 !important;
+    color: #090d16 !important;
+    box-shadow: 0 0 12px rgba(245, 158, 11, 0.7) !important;
 }
 
 /* ==========================================================================
-   6. BARRA SUPERIOR FLOTANTE DE CONTROL (JUGADORES Y MÁSTER)
+   6. BOTONES BASE Y BARRA SUPERIOR DE CONTROL (JUGADORES Y MÁSTER)
    ========================================================================== */
+
+/* Resetear el height: var(--button-size) global de Foundry v14 para que ningún botón se descabale */
+.do-cam-btn {
+    background: #1e293b !important;
+    border: 1px solid #334155 !important;
+    color: #e2e8f0 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    width: auto !important;
+    padding: 4px 9px !important;
+    border-radius: 5px !important;
+    cursor: pointer !important;
+    font-family: monospace !important;
+    font-size: 11px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 5px !important;
+    transition: all 0.15s ease !important;
+    line-height: 1.2 !important;
+    white-space: nowrap !important;
+    box-shadow: none !important;
+}
+
+.do-cam-btn:hover {
+    background: #334155 !important;
+    border-color: #38bdf8 !important;
+    color: #fff !important;
+}
+
+.do-cam-btn.is-active {
+    background: #0284c7 !important;
+    border-color: #38bdf8 !important;
+    color: #fff !important;
+    font-weight: bold !important;
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.45) !important;
+}
+
+.do-cam-btn-amber {
+    background: #78350f !important;
+    border-color: #b45309 !important;
+    color: #fde68a !important;
+}
+
+.do-cam-btn-amber:hover,
+.do-cam-btn-amber.is-active {
+    background: #b45309 !important;
+    border-color: #fbbf24 !important;
+    color: #fff !important;
+}
+
+.do-cam-btn-success {
+    background: #059669 !important;
+    border-color: #047857 !important;
+    color: #fff !important;
+    font-weight: bold !important;
+}
+
+.do-cam-btn-success:hover {
+    background: #047857 !important;
+    border-color: #34d399 !important;
+}
+
+.do-cam-btn-danger {
+    background: #7f1d1d !important;
+    border-color: #991b1b !important;
+    color: #fecaca !important;
+}
+
+.do-cam-btn-danger:hover {
+    background: #991b1b !important;
+    border-color: #f87171 !important;
+    color: #fff !important;
+}
 
 #do-cam-topbar {
     position: fixed;
     top: 10px;
     left: calc(50% - 155px);
     transform: translateX(-50%);
-    z-index: 90; /* Por encima de #camera-views (26), debajo de ventanas flotantes (100) */
-    min-height: 36px;
+    z-index: 90; /* Por encima de #camera-views (32), debajo de ventanas flotantes (100) */
+    min-height: 34px;
     background: rgba(9, 13, 24, 0.94);
     border: 1px solid #38bdf8;
     border-radius: 8px;
     box-shadow: 0 6px 24px rgba(0, 0, 0, 0.85), 0 0 16px rgba(56, 189, 248, 0.22);
     display: none;
     align-items: center;
-    gap: 10px;
-    padding: 4px 12px;
+    gap: 8px;
+    padding: 4px 10px;
     font-family: monospace;
     font-size: 12px;
     color: #94a3b8;
@@ -364,7 +487,7 @@ body.do-cam-center-active #do-cam-topbar {
 .do-cam-topbar-left {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 7px;
     padding-right: 8px;
     border-right: 1px solid #1e293b;
 }
@@ -387,120 +510,108 @@ body.do-cam-center-active #do-cam-topbar {
     background: rgba(56, 189, 248, 0.16);
     border: 1px solid #0284c7;
     color: #38bdf8;
-    padding: 2px 8px;
+    padding: 2px 7px;
     border-radius: 4px;
     font-size: 11px;
     font-weight: bold;
     text-transform: uppercase;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
 }
 
 .do-cam-topbar-actions {
     display: flex;
     align-items: center;
-    gap: 6px;
-}
-
-.do-cam-btn {
-    background: #1e293b;
-    border: 1px solid #334155;
-    color: #e2e8f0;
-    padding: 4px 9px;
-    border-radius: 5px;
-    cursor: pointer;
-    font-family: monospace;
-    font-size: 11px;
-    display: inline-flex;
-    align-items: center;
     gap: 5px;
-    transition: all 0.15s ease;
-    line-height: 1.2;
 }
 
-.do-cam-btn:hover {
-    background: #334155;
-    border-color: #38bdf8;
-    color: #fff;
-}
-
-.do-cam-btn.is-active {
-    background: #0284c7;
-    border-color: #38bdf8;
-    color: #fff;
-    font-weight: bold;
-    box-shadow: 0 0 10px rgba(56, 189, 248, 0.45);
-}
-
-.do-cam-btn-amber {
-    background: #78350f;
-    border-color: #b45309;
-    color: #fde68a;
-}
-
-.do-cam-btn-amber:hover,
-.do-cam-btn-amber.is-active {
-    background: #b45309;
-    border-color: #fbbf24;
-    color: #fff;
-}
-
-.do-cam-btn-success {
-    background: #059669;
-    border-color: #047857;
-    color: #fff;
-    font-weight: bold;
-}
-
-.do-cam-btn-success:hover {
-    background: #047857;
-    border-color: #34d399;
-}
-
-.do-cam-btn-danger {
-    background: #7f1d1d;
-    border-color: #991b1b;
-    color: #fecaca;
-}
-
-.do-cam-btn-danger:hover {
-    background: #991b1b;
-    border-color: #f87171;
-    color: #fff;
+.do-cam-sep {
+    width: 1px;
+    height: 18px;
+    background: #1e293b;
+    margin: 0 2px;
 }
 
 /* Destello llamativo cuando el jugador está en modo "Viendo Escena" para que sepa volver fácilmente */
 body.do-cam-player-peek #do-cam-peek-btn {
-    background: #0284c7;
-    border-color: #38bdf8;
-    color: #fff;
-    font-weight: bold;
-    box-shadow: 0 0 14px rgba(56, 189, 248, 0.65);
+    background: #0284c7 !important;
+    border-color: #38bdf8 !important;
+    color: #fff !important;
+    font-weight: bold !important;
+    box-shadow: 0 0 14px rgba(56, 189, 248, 0.65) !important;
 }
 
 /* ==========================================================================
-   7. BOTÓN FLOTANTE RÁPIDO DEL MÁSTER (SIEMPRE ACCESIBLE) Y MODAL GM
+   7. BARRA DEL MÁSTER FIJA ENCIMA DE LOS CONTROLES DE CÁMARA/MICRÓFONO
    ========================================================================== */
 
-#do-cam-gm-fab {
-    position: fixed;
-    bottom: 14px;
-    left: 230px;
-    z-index: 92;
-    background: rgba(9, 13, 24, 0.92);
-    border: 1px solid #334155;
-    border-radius: 7px;
-    padding: 4px;
-    display: inline-flex;
+#do-cam-gm-bar {
+    width: 100%;
+    background: rgba(9, 13, 24, 0.94);
+    border-top: 1px solid #1e293b;
+    border-bottom: 1px solid #1e293b;
+    padding: 3px 6px;
+    margin: 0 0 -8px 0; /* Se pega justo encima de #camera-views > .user-controls anulando el gap de 8px */
+    display: flex;
     align-items: center;
     gap: 4px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.75);
-    font-family: monospace;
+    box-sizing: border-box;
     pointer-events: all;
+    z-index: 95;
 }
 
-#do-cam-gm-fab.is-center-active {
-    border-color: #10b981;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.85), 0 0 12px rgba(16, 185, 129, 0.35);
+#do-cam-gm-bar.is-center-active {
+    border-top-color: #10b981;
 }
+
+#do-cam-gm-bar .do-cam-gm-bar-main {
+    flex: 1 !important;
+    padding: 3px 6px !important;
+    font-size: 11px !important;
+}
+
+#do-cam-gm-bar .do-cam-gm-bar-cfg {
+    flex: 0 0 auto !important;
+    padding: 3px 7px !important;
+    font-size: 11px !important;
+}
+
+/* Si la barra de cámaras está en modo horizontal (abajo/arriba) en Modo Normal */
+#camera-views.horizontal #do-cam-gm-bar {
+    position: fixed;
+    bottom: 34px;
+    left: 0;
+    width: 240px;
+    margin: 0;
+    border-right: 1px solid #1e293b;
+    border-radius: 0 6px 0 0;
+}
+
+/* En Modo Grande (Conversación activa), la barra del Máster queda fija exactamente encima
+   de los controles de cámara/micrófono de abajo a la izquierda */
+body.do-cam-center-active:not(.do-cam-player-peek) #do-cam-gm-bar {
+    position: fixed !important;
+    bottom: 34px !important;
+    left: 0 !important;
+    width: var(--av-width, 300px) !important;
+    min-width: 240px !important;
+    margin: 0 !important;
+    border-right: 1px solid #1e293b !important;
+    border-radius: 0 6px 0 0 !important;
+    z-index: 95 !important;
+}
+
+/* Si el dock vertical está minimizado en Modo Normal, mantener la barrita legible abajo a la izquierda */
+#camera-views.minimized.vertical #do-cam-gm-bar {
+    min-width: 195px;
+    border-right: 1px solid #1e293b;
+    border-radius: 0 6px 0 0;
+}
+
+/* ==========================================================================
+   8. MODAL DE CONFIGURACIÓN DEL MÁSTER (COMPACTO Y SIN DESBORDAMIENTOS)
+   ========================================================================== */
 
 .do-cam-gm-backdrop {
     position: fixed;
@@ -511,12 +622,13 @@ body.do-cam-player-peek #do-cam-peek-btn {
     display: flex;
     align-items: center;
     justify-content: center;
+    pointer-events: all;
 }
 
 .do-cam-gm-modal {
-    width: 560px;
-    max-width: 95vw;
-    max-height: 90vh;
+    width: 520px;
+    max-width: 94vw;
+    max-height: 88vh;
     background: #090d16;
     border: 1px solid #38bdf8;
     border-radius: 10px;
@@ -530,16 +642,17 @@ body.do-cam-player-peek #do-cam-peek-btn {
 
 .do-cam-gm-header {
     background: #050811;
-    padding: 12px 16px;
+    padding: 10px 14px;
     border-bottom: 1px solid #1e293b;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 10px;
 }
 
 .do-cam-gm-title {
     font-family: monospace;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: bold;
     color: #38bdf8;
     display: flex;
@@ -548,21 +661,21 @@ body.do-cam-player-peek #do-cam-peek-btn {
 }
 
 .do-cam-gm-body {
-    padding: 16px;
+    padding: 14px;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 12px;
 }
 
 .do-cam-gm-card {
     background: #0f172a;
     border: 1px solid #1e293b;
     border-radius: 8px;
-    padding: 12px 14px;
+    padding: 10px 12px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
 }
 
 .do-cam-gm-card-title {
@@ -581,21 +694,53 @@ body.do-cam-player-peek #do-cam-peek-btn {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    gap: 10px;
+    font-size: 12.5px;
+}
+
+.do-cam-gm-row label {
+    flex: 1;
+    min-width: 0;
+    line-height: 1.3;
+    color: #cbd5e1;
+}
+
+.do-cam-gm-row-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+}
+
+.do-cam-gm-row-text strong {
+    color: #f8fafc;
     font-size: 13px;
+}
+
+.do-cam-gm-row-text span {
+    color: #94a3b8;
+    font-size: 11.5px;
+}
+
+.do-cam-gm-row-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 0 0 auto;
 }
 
 .do-cam-mode-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 10px;
+    gap: 8px;
 }
 
 .do-cam-mode-option {
     background: #060a14;
-    border: 2px solid #1e293b;
-    border-radius: 8px;
-    padding: 10px 12px;
+    border: 1.5px solid #1e293b;
+    border-radius: 7px;
+    padding: 9px 10px;
     cursor: pointer;
     text-align: left;
     color: #cbd5e1;
@@ -603,41 +748,50 @@ body.do-cam-player-peek #do-cam-peek-btn {
     display: flex;
     flex-direction: column;
     gap: 4px;
+    height: auto !important;
+    min-height: 0 !important;
+    box-sizing: border-box;
+    user-select: none;
 }
 
 .do-cam-mode-option:hover {
     border-color: #475569;
+    background: #0b1222;
 }
 
 .do-cam-mode-option.is-selected {
     border-color: #38bdf8;
     background: rgba(2, 132, 199, 0.16);
-    box-shadow: 0 0 14px rgba(56, 189, 248, 0.2);
+    box-shadow: 0 0 12px rgba(56, 189, 248, 0.18);
 }
 
-.do-cam-mode-option strong {
-    font-size: 13px;
+.do-cam-mode-title {
+    font-size: 12.5px;
+    font-weight: bold;
     color: #f8fafc;
     display: flex;
     align-items: center;
     gap: 6px;
 }
 
-.do-cam-mode-option.is-selected strong {
+.do-cam-mode-option.is-selected .do-cam-mode-title {
     color: #38bdf8;
 }
 
-.do-cam-mode-option span {
-    font-size: 11.5px;
+.do-cam-mode-desc {
+    font-size: 11px;
     color: #94a3b8;
-    line-height: 1.35;
+    line-height: 1.3;
 }
 
 .do-cam-select {
-    background: #050811;
-    border: 1px solid #334155;
-    color: #f8fafc;
-    padding: 5px 8px;
-    border-radius: 5px;
-    font-size: 12px;
+    background: #050811 !important;
+    border: 1px solid #334155 !important;
+    color: #f8fafc !important;
+    padding: 4px 8px !important;
+    border-radius: 5px !important;
+    font-size: 12px !important;
+    height: 28px !important;
+    width: 220px !important;
+    max-width: 55% !important;
 }

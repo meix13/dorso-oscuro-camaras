@@ -31,10 +31,34 @@ let localFullscreen = false;     // true si el usuario ha pulsado "Ancho Complet
 let lastSeenNonce = null;
 
 // Estado de voz en tiempo real para el modo Destacar Orador
-// userId -> { speaking: boolean, lastSpokeAt: number, hideTimeout: number|null }
+// userId -> { rawSpeaking: boolean, speaking: boolean, lastSpokeAt: number, hideTimeout: number|null }
 const speakerMap = new Map();
 let lastActiveSpeakerId = null;
 let voiceHooksInstalled = false;
+
+/**
+ * Helper seguro para cambiar clases sin provocar mutaciones innecesarias del DOM
+ */
+function setClass(el, className, active) {
+    if (!el || !className) return;
+    const has = el.classList.contains(className);
+    if (active && !has) {
+        el.classList.add(className);
+    } else if (!active && has) {
+        el.classList.remove(className);
+    }
+}
+
+/**
+ * Helper seguro para atributos sin provocar mutaciones innecesarias del DOM
+ */
+function setAttr(el, attrName, value) {
+    if (!el) return;
+    const strVal = String(value);
+    if (el.getAttribute(attrName) !== strVal) {
+        el.setAttribute(attrName, strVal);
+    }
+}
 
 /**
  * Obtiene la configuración global guardada en el mundo
@@ -96,9 +120,8 @@ function getVisibleCameraElements() {
     const camViews = getCameraViewsElement();
     if (!camViews) return [];
     return Array.from(camViews.querySelectorAll(".camera-container .camera-view")).filter(el => {
-        if (el.classList.contains("hidden")) return false;
-        const style = window.getComputedStyle(el);
-        return style.display !== "none";
+        if (el.classList.contains("hidden") || el.hidden) return false;
+        return true;
     });
 }
 
@@ -126,7 +149,7 @@ function enhanceCharacterPortraitsIfNeeded(conf) {
             const charImg = user.character?.img ||
                 game.actors?.find(a => a.name.toLowerCase() !== "grupo" && a.ownership?.[userId] === 3)?.img;
             if (charImg && !charImg.includes("mystery-man")) {
-                imgEl.setAttribute("src", charImg);
+                setAttr(imgEl, "src", charImg);
             }
         }
     });
@@ -181,10 +204,11 @@ function ensureCameraContainerHelpers(conf) {
             }
 
             const isPinned = conf.pinnedUserId === userId;
-            pinBtn.classList.toggle("is-pinned", isPinned);
-            pinBtn.title = isPinned
+            setClass(pinBtn, "is-pinned", isPinned);
+            const expectedTitle = isPinned
                 ? "Quitar fijación (volver a detección automática por voz)"
                 : "Fijar esta cámara en grande en Modo Destacar Orador";
+            if (pinBtn.title !== expectedTitle) pinBtn.title = expectedTitle;
         });
     }
 }
@@ -200,15 +224,19 @@ function updateCameraLayoutAndSpotlight() {
 
     const visibleCams = getVisibleCameraElements();
     const count = Math.max(1, Math.min(8, visibleCams.length));
-    camViews.setAttribute("data-cam-count", String(count));
-    camViews.style.setProperty("--do-cam-aspect", conf.aspectRatio === "16/9" ? "16 / 9" : "4 / 3");
+    setAttr(camViews, "data-cam-count", count);
+
+    const desiredAspect = conf.aspectRatio === "16/9" ? "16 / 9" : "4 / 3";
+    if (camViews.style.getPropertyValue("--do-cam-aspect") !== desiredAspect) {
+        camViews.style.setProperty("--do-cam-aspect", desiredAspect);
+    }
 
     ensureCameraContainerHelpers(conf);
     enhanceCharacterPortraitsIfNeeded(conf);
 
     if (!conf.active || conf.layout !== "spotlight" || visibleCams.length <= 1) {
-        visibleCams.forEach(el => el.classList.remove("do-spotlight-main"));
-        camViews.setAttribute("data-spotlight-count", "1");
+        visibleCams.forEach(el => setClass(el, "do-spotlight-main", false));
+        setAttr(camViews, "data-spotlight-count", "1");
         return;
     }
 
@@ -252,14 +280,14 @@ function updateCameraLayoutAndSpotlight() {
     const spotlightSet = new Set(spotlightUserIds);
     visibleCams.forEach(el => {
         const uid = el.dataset.user;
-        el.classList.toggle("do-spotlight-main", Boolean(uid && spotlightSet.has(uid)));
+        setClass(el, "do-spotlight-main", Boolean(uid && spotlightSet.has(uid)));
     });
 
-    camViews.setAttribute("data-spotlight-count", String(Math.max(1, Math.min(2, spotlightSet.size))));
+    setAttr(camViews, "data-spotlight-count", Math.max(1, Math.min(2, spotlightSet.size)));
 }
 
 /**
- * Aplica todas las clases al body y sincroniza la barra superior y el panel del GM
+ * Aplica todas las clases al body y sincroniza la barra superior y la barra inferior del GM
  */
 function syncConversationModeState() {
     if (!game.ready) return;
@@ -283,53 +311,58 @@ function syncConversationModeState() {
     const effectivePeek = conf.active && localPlayerPeek && (conf.allowPlayerPeek || game.user?.isGM);
 
     const body = document.body;
-    body.classList.toggle("do-cam-center-active", conf.active);
-    body.classList.toggle("do-cam-player-peek", effectivePeek);
-    body.classList.toggle("do-cam-fullscreen", conf.active && localFullscreen && !effectivePeek);
+    setClass(body, "do-cam-center-active", conf.active);
+    setClass(body, "do-cam-player-peek", effectivePeek);
+    setClass(body, "do-cam-fullscreen", conf.active && localFullscreen && !effectivePeek);
 
-    body.classList.toggle("do-cam-layout-grid", conf.active && conf.layout === "grid");
-    body.classList.toggle("do-cam-layout-spotlight", conf.active && conf.layout === "spotlight");
+    setClass(body, "do-cam-layout-grid", conf.active && conf.layout === "grid");
+    setClass(body, "do-cam-layout-spotlight", conf.active && conf.layout === "spotlight");
 
-    body.classList.toggle("do-cam-bg-blur", conf.backgroundStyle === "blur");
-    body.classList.toggle("do-cam-bg-dark", conf.backgroundStyle === "dark");
-    body.classList.toggle("do-cam-bg-dim", conf.backgroundStyle === "dim");
+    setClass(body, "do-cam-bg-blur", conf.backgroundStyle === "blur");
+    setClass(body, "do-cam-bg-dark", conf.backgroundStyle === "dark");
+    setClass(body, "do-cam-bg-dim", conf.backgroundStyle === "dim");
 
-    body.classList.toggle("do-cam-pause-dc", conf.active && conf.pauseDialogosCentrales);
+    setClass(body, "do-cam-pause-dc", conf.active && conf.pauseDialogosCentrales);
 
-    // Si algún jugador tenía #camera-views plegado/minimizado en Foundry y entra en modo conversación,
-    // nos aseguramos de que los vídeos sean visibles
     updateCameraLayoutAndSpotlight();
     renderOrUpdateTopBar(conf, effectivePeek);
-    renderOrUpdateGmFab(conf);
+    renderOrUpdateGmBar(conf);
     refreshGmModalIfOpen(conf);
 }
 
 /* ==========================================================================
-   2. DETECCIÓN DE VOZ (COMPATIBLE CON LIVEKIT Y WEBRTC NATIVO)
+   2. DETECCIÓN DE VOZ SIN BUCLES DE MUTACIÓN (LIVEKIT Y WEBRTC NATIVO)
    ========================================================================== */
 
 function handleSpeakingEvent(userId, isSpeaking, fromSocket = false) {
     if (!game.ready || !userId) return;
+    const speakingBool = Boolean(isSpeaking);
 
-    // Emitir nuestro propio estado de voz por socket por si algún cliente no lo recibe de WebRTC
+    let entry = speakerMap.get(userId);
+    if (!entry) {
+        entry = { rawSpeaking: false, speaking: false, lastSpokeAt: 0, hideTimeout: null };
+        speakerMap.set(userId, entry);
+    }
+
+    // Evitar procesar eventos repetidos con el mismo estado (previene bucles e inundación de sockets)
+    if (entry.rawSpeaking === speakingBool) {
+        return;
+    }
+    entry.rawSpeaking = speakingBool;
+
+    // Emitir nuestro propio cambio de voz por socket por si algún cliente no lo recibe de WebRTC
     if (!fromSocket && userId === game.user?.id && game.socket) {
         game.socket.emit(SOCKET_NAME, {
             action: "speaking",
             userId,
-            isSpeaking: Boolean(isSpeaking)
+            isSpeaking: speakingBool
         });
     }
 
     const conf = getConfig();
-    let entry = speakerMap.get(userId);
-    if (!entry) {
-        entry = { speaking: false, lastSpokeAt: 0, hideTimeout: null };
-        speakerMap.set(userId, entry);
-    }
-
     const camEl = document.querySelector(`#camera-views .camera-view[data-user="${userId}"]`);
 
-    if (isSpeaking) {
+    if (speakingBool) {
         if (entry.hideTimeout) {
             clearTimeout(entry.hideTimeout);
             entry.hideTimeout = null;
@@ -339,7 +372,7 @@ function handleSpeakingEvent(userId, isSpeaking, fromSocket = false) {
         entry.lastSpokeAt = Date.now();
         lastActiveSpeakerId = userId;
 
-        if (camEl) camEl.classList.add("do-is-speaking");
+        if (camEl) setClass(camEl, "do-is-speaking", true);
 
         if (!wasSpeaking && conf.active && conf.layout === "spotlight") {
             updateCameraLayoutAndSpotlight();
@@ -350,8 +383,10 @@ function handleSpeakingEvent(userId, isSpeaking, fromSocket = false) {
         entry.hideTimeout = setTimeout(() => {
             entry.speaking = false;
             entry.hideTimeout = null;
-            if (camEl) camEl.classList.remove("do-is-speaking");
-            if (getConfig().active && getConfig().layout === "spotlight") {
+            const currentCamEl = document.querySelector(`#camera-views .camera-view[data-user="${userId}"]`);
+            if (currentCamEl) setClass(currentCamEl, "do-is-speaking", false);
+            const curConf = getConfig();
+            if (curConf.active && curConf.layout === "spotlight") {
                 updateCameraLayoutAndSpotlight();
             }
         }, holdMs);
@@ -376,17 +411,9 @@ function installVoiceHooks() {
         }
     };
 
-    wrapWebRtc();
-    Hooks.on("renderCameraViews", () => {
-        wrapWebRtc();
-        setTimeout(() => {
-            syncConversationModeState();
-        }, 50);
-    });
-
     // 2. Envolver directamente _liveKitClient.onIsSpeakingChanged si está presente
-    const wrapLiveKit = () => {
-        const lkClient = game.webrtc?.client?._liveKitClient;
+    const wrapLiveKit = (lkInstance) => {
+        const lkClient = lkInstance || game.webrtc?.client?._liveKitClient;
         if (lkClient && typeof lkClient.onIsSpeakingChanged === "function" && !lkClient._doCamWrapped) {
             const origLk = lkClient.onIsSpeakingChanged.bind(lkClient);
             lkClient.onIsSpeakingChanged = function (userId, speaking) {
@@ -399,41 +426,22 @@ function installVoiceHooks() {
         }
     };
 
+    wrapWebRtc();
     wrapLiveKit();
-    setTimeout(wrapLiveKit, 3000);
+    setTimeout(wrapLiveKit, 2500);
 
-    // 3. MutationObserver sobre #camera-views para detectar cambios en la clase .speaking o nuevas cámaras
-    const observer = new MutationObserver((mutations) => {
-        let shouldRecount = false;
-        for (const m of mutations) {
-            if (m.type === "attributes" && m.attributeName === "class") {
-                const el = m.target;
-                if (el instanceof HTMLElement && el.classList.contains("camera-view") && el.dataset.user) {
-                    const isSpk = el.classList.contains("speaking");
-                    handleSpeakingEvent(el.dataset.user, isSpk);
-                }
-            } else if (m.type === "childList") {
-                const target = m.target;
-                if (target instanceof HTMLElement && (target.id === "camera-views" || target.closest("#camera-views"))) {
-                    shouldRecount = true;
-                }
-            }
-        }
-        if (shouldRecount && getConfig().active) {
-            updateCameraLayoutAndSpotlight();
-        }
-    });
+    Hooks.on("liveKitClientAvailable", (lkClient) => wrapLiveKit(lkClient));
+    Hooks.on("liveKitClientInitialized", (lkClient) => wrapLiveKit(lkClient));
 
-    observer.observe(document.body, {
-        subtree: true,
-        childList: true,
-        attributes: true,
-        attributeFilter: ["class"]
+    Hooks.on("renderCameraViews", () => {
+        wrapWebRtc();
+        wrapLiveKit();
+        syncConversationModeState();
     });
 }
 
 /* ==========================================================================
-   3. BARRA SUPERIOR FLOTANTE (PARA JUGADORES Y MÁSTER)
+   3. BARRA SUPERIOR FLOTANTE (CUANDO MODO CONVERSACIÓN ESTÁ ACTIVO)
    ========================================================================== */
 
 function renderOrUpdateTopBar(conf, effectivePeek) {
@@ -456,7 +464,7 @@ function renderOrUpdateTopBar(conf, effectivePeek) {
 
     const modeBadgeText = effectivePeek
         ? "VIENDO ESCENA"
-        : (conf.layout === "spotlight" ? "MODO CONVERSACIÓN · ORADOR" : "MODO CONVERSACIÓN");
+        : (conf.layout === "spotlight" ? "CONVERSACIÓN · ORADOR" : "CONVERSACIÓN");
 
     topbar.innerHTML = `
         <div class="do-cam-topbar-left">
@@ -478,33 +486,36 @@ function renderOrUpdateTopBar(conf, effectivePeek) {
             ${!effectivePeek ? `
             <button type="button" class="do-cam-btn ${localFullscreen ? "is-active" : ""}" id="do-cam-fs-btn" title="Ocultar o mostrar la barra lateral derecha para aprovechar todo el ancho">
                 <i class="fa-solid ${localFullscreen ? "fa-compress" : "fa-expand"}"></i>
-                <span>Ancho Completo</span>
             </button>
             ` : ""}
 
             ${isGM ? `
-            <span style="width:1px; height:18px; background:#1e293b; margin:0 2px;"></span>
+            <span class="do-cam-sep"></span>
 
-            <button type="button" class="do-cam-btn ${conf.layout === "grid" ? "is-active" : ""}" id="do-cam-top-grid-btn" title="Modo Cuadrícula: Todas las cámaras grandes del mismo tamaño">
-                <i class="fa-solid fa-table-cells-large"></i> Cuadrícula
+            <button type="button" class="do-cam-btn ${conf.layout === "grid" ? "is-active" : ""}" id="do-cam-top-grid-btn" title="Modo Cuadrícula: Todas las cámaras del mismo tamaño">
+                <i class="fa-solid fa-table-cells-large"></i>
+                <span>Cuadrícula</span>
             </button>
 
-            <button type="button" class="do-cam-btn ${conf.layout === "spotlight" ? "is-active" : ""}" id="do-cam-top-spot-btn" title="Modo Destacar Orador: Quien habla se ve más grande en el escenario principal">
-                <i class="fa-solid fa-person-rays"></i> Destacar Orador
+            <button type="button" class="do-cam-btn ${conf.layout === "spotlight" ? "is-active" : ""}" id="do-cam-top-spot-btn" title="Modo Destacar Orador: Quien habla se ve en grande arriba">
+                <i class="fa-solid fa-person-rays"></i>
+                <span>Orador</span>
             </button>
 
             ${conf.layout === "spotlight" && pinnedUser ? `
             <button type="button" class="do-cam-btn do-cam-btn-amber" id="do-cam-unpin-btn" title="Quitar fijación de ${pinnedUser.name} y volver a detección automática por voz">
-                <i class="fa-solid fa-thumbtack-slash"></i> Fijo: ${pinnedUser.name}
+                <i class="fa-solid fa-thumbtack-slash"></i>
+                <span>${pinnedUser.name}</span>
             </button>
             ` : ""}
 
-            <button type="button" class="do-cam-btn do-cam-btn-amber" id="do-cam-top-gm-btn" title="Abrir panel de configuración de Modo Conversación">
+            <button type="button" class="do-cam-btn do-cam-btn-amber" id="do-cam-top-gm-btn" title="Abrir ajustes de Modo Conversación">
                 <i class="fa-solid fa-sliders"></i>
             </button>
 
             <button type="button" class="do-cam-btn do-cam-btn-danger" id="do-cam-top-off-btn" title="Desactivar Modo Conversación y devolver las cámaras de todos a la barra normal">
-                <i class="fa-solid fa-xmark"></i> Barra Normal
+                <i class="fa-solid fa-xmark"></i>
+                <span>Barra Normal</span>
             </button>
             ` : ""}
         </div>
@@ -546,32 +557,43 @@ function renderOrUpdateTopBar(conf, effectivePeek) {
 }
 
 /* ==========================================================================
-   4. BOTÓN RÁPIDO FLOTANTE DEL MÁSTER Y PANEL DE CONFIGURACIÓN GM
+   4. BARRA DEL MÁSTER FIJA ENCIMA DE LOS CONTROLES DE CÁMARA/MICRÓFONO
    ========================================================================== */
 
-function renderOrUpdateGmFab(conf) {
+function renderOrUpdateGmBar(conf) {
     if (!game.user?.isGM) return;
 
-    let fab = document.getElementById("do-cam-gm-fab");
-    if (!fab) {
-        fab = document.createElement("div");
-        fab.id = "do-cam-gm-fab";
-        document.body.appendChild(fab);
+    const camViews = getCameraViewsElement();
+    const userControls = camViews?.querySelector(":scope > .user-controls");
+
+    let bar = document.getElementById("do-cam-gm-bar");
+    if (!bar) {
+        bar = document.createElement("div");
+        bar.id = "do-cam-gm-bar";
     }
 
-    fab.classList.toggle("is-center-active", conf.active);
+    // Colocar la barra justo encima de .user-controls dentro de #camera-views (o en body como respaldo)
+    if (userControls && bar.nextElementSibling !== userControls) {
+        userControls.before(bar);
+    } else if (!userControls && !bar.parentElement) {
+        document.body.appendChild(bar);
+    }
 
-    fab.innerHTML = `
-        <button type="button" class="do-cam-btn ${conf.active ? "do-cam-btn-success" : ""}" id="do-cam-fab-toggle" title="${conf.active ? "Devolver cámaras a la barra normal (Alt+C)" : "Activar Modo Conversación en el centro para todos (Alt+C)"}">
+    setClass(bar, "is-center-active", conf.active);
+
+    bar.innerHTML = `
+        <button type="button" class="do-cam-btn do-cam-gm-bar-main ${conf.active ? "do-cam-btn-success" : ""}" id="do-cam-bar-toggle" title="${conf.active ? "Devolver cámaras a la barra normal (Alt+C)" : "Activar Modo Conversación en el centro para todos (Alt+C)"}">
             <i class="fa-solid ${conf.active ? "fa-users-viewfinder" : "fa-video"}"></i>
             <span>${conf.active ? "Cámaras: CENTRO" : "Modo Conversación"}</span>
         </button>
-        <button type="button" class="do-cam-btn" id="do-cam-fab-settings" title="Abrir ajustes de Modo Conversación y Destacar Orador">
+        <button type="button" class="do-cam-btn do-cam-gm-bar-cfg" id="do-cam-bar-settings" title="Configurar Modo Conversación y Destacar Orador">
             <i class="fa-solid fa-sliders"></i>
         </button>
     `;
 
-    fab.querySelector("#do-cam-fab-toggle")?.addEventListener("click", async () => {
+    bar.querySelector("#do-cam-bar-toggle")?.addEventListener("click", async (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
         const cur = getConfig();
         const nextActive = !cur.active;
         await updateConfig({ active: nextActive }, nextActive);
@@ -582,7 +604,9 @@ function renderOrUpdateGmFab(conf) {
         );
     });
 
-    fab.querySelector("#do-cam-fab-settings")?.addEventListener("click", () => {
+    bar.querySelector("#do-cam-bar-settings")?.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
         openGmModal();
     });
 }
@@ -614,10 +638,10 @@ function refreshGmModalIfOpen(conf) {
 function renderGmModalContent(backdrop, conf) {
     const users = Array.from(game.users || []);
     const pinOptionsHtml = [
-        `<option value="" ${!conf.pinnedUserId ? "selected" : ""}>🎙️ Automático por voz (con retención del último orador)</option>`,
+        `<option value="" ${!conf.pinnedUserId ? "selected" : ""}>🎙️ Automático por voz (retiene último orador)</option>`,
         ...users.map(u => {
             const charLabel = u.character?.name ? ` (${u.character.name})` : (u.isGM ? " (Máster)" : "");
-            return `<option value="${u.id}" ${conf.pinnedUserId === u.id ? "selected" : ""}>📌 Fijar a: ${u.name}${charLabel}</option>`;
+            return `<option value="${u.id}" ${conf.pinnedUserId === u.id ? "selected" : ""}>📌 Fijar: ${u.name}${charLabel}</option>`;
         })
     ].join("");
 
@@ -626,10 +650,11 @@ function renderGmModalContent(backdrop, conf) {
             <div class="do-cam-gm-header">
                 <div class="do-cam-gm-title">
                     <i class="fa-solid fa-users-viewfinder"></i>
-                    <span>DORSO OSCURO // MODO CONVERSACIÓN DE CÁMARAS</span>
+                    <span>MODO CONVERSACIÓN DE CÁMARAS</span>
                 </div>
                 <button type="button" class="do-cam-btn" id="do-cam-modal-close">
-                    <i class="fa-solid fa-xmark"></i> Cerrar
+                    <i class="fa-solid fa-xmark"></i>
+                    <span>Cerrar</span>
                 </button>
             </div>
 
@@ -637,23 +662,20 @@ function renderGmModalContent(backdrop, conf) {
                 <!-- 1. Conmutador Principal: Barra Normal vs Centro -->
                 <div class="do-cam-gm-card" style="border-color: ${conf.active ? "#10b981" : "#334155"};">
                     <div class="do-cam-gm-row">
-                        <div>
-                            <strong style="color:#f8fafc; font-size:14px;">Posición Global de las Cámaras</strong>
-                            <div style="color:#94a3b8; font-size:12px;">
-                                ${conf.active
-                                    ? "Actualmente en el CENTRO tapando la escena (fichas y diarios siguen encima)"
-                                    : "Actualmente en la BARRA NORMAL de Foundry"}
-                            </div>
+                        <div class="do-cam-gm-row-text">
+                            <strong>Posición de las Cámaras</strong>
+                            <span>${conf.active ? "En el CENTRO (tapando la escena)" : "En la BARRA NORMAL de Foundry"}</span>
                         </div>
-                        <div style="display:flex; gap:6px;">
+                        <div class="do-cam-gm-row-actions">
                             ${conf.active ? `
                             <button type="button" class="do-cam-btn" id="do-cam-force-sync-btn" title="Si algún jugador pulsó 'Ver Escena', vuelve a ponerle las cámaras en el centro">
-                                <i class="fa-solid fa-arrows-to-circle"></i> Traer todos al centro
+                                <i class="fa-solid fa-arrows-to-circle"></i>
+                                <span>Sincronizar</span>
                             </button>
                             ` : ""}
-                            <button type="button" id="do-cam-modal-toggle-active" class="do-cam-btn ${conf.active ? "do-cam-btn-danger" : "do-cam-btn-success"}" style="padding: 7px 14px; font-size: 12px;">
+                            <button type="button" id="do-cam-modal-toggle-active" class="do-cam-btn ${conf.active ? "do-cam-btn-danger" : "do-cam-btn-success"}">
                                 <i class="fa-solid ${conf.active ? "fa-down-left-and-up-right-to-center" : "fa-up-right-and-down-left-from-center"}"></i>
-                                ${conf.active ? "Volver a Barra Normal" : "Poner en el Centro"}
+                                <span>${conf.active ? "Pasar a Barra Normal" : "Poner en el Centro"}</span>
                             </button>
                         </div>
                     </div>
@@ -662,30 +684,39 @@ function renderGmModalContent(backdrop, conf) {
                 <!-- 2. Elección de Diseño en el Centro: Cuadrícula vs Destacar Orador -->
                 <div class="do-cam-gm-card">
                     <div class="do-cam-gm-card-title">
-                        <span><i class="fa-solid fa-table-columns"></i> DISEÑO EN MODO CONVERSACIÓN</span>
-                        <span>Se puede cambiar en vivo</span>
+                        <span><i class="fa-solid fa-table-columns"></i> DISEÑO EN EL CENTRO</span>
                     </div>
                     <div class="do-cam-mode-grid">
-                        <button type="button" class="do-cam-mode-option ${conf.layout === "grid" ? "is-selected" : ""}" data-layout="grid">
-                            <strong><i class="fa-solid fa-table-cells-large"></i> Modo Cuadrícula (Normal)</strong>
-                            <span>Todas las cámaras se ven grandes y del mismo tamaño en el centro. Quien habla se ilumina con borde brillante.</span>
-                        </button>
-                        <button type="button" class="do-cam-mode-option ${conf.layout === "spotlight" ? "is-selected" : ""}" data-layout="spotlight">
-                            <strong><i class="fa-solid fa-person-rays"></i> Destacar Orador (Escenario)</strong>
-                            <span>Quien habla (o hasta 2 en diálogo) se muestra en grande arriba y el resto debajo, sin saltos bruscos al callar.</span>
-                        </button>
+                        <div class="do-cam-mode-option ${conf.layout === "grid" ? "is-selected" : ""}" data-layout="grid" role="button" tabindex="0">
+                            <div class="do-cam-mode-title">
+                                <i class="fa-solid fa-table-cells-large"></i>
+                                <span>Cuadrícula</span>
+                            </div>
+                            <div class="do-cam-mode-desc">
+                                Todas las cámaras iguales en el centro.
+                            </div>
+                        </div>
+                        <div class="do-cam-mode-option ${conf.layout === "spotlight" ? "is-selected" : ""}" data-layout="spotlight" role="button" tabindex="0">
+                            <div class="do-cam-mode-title">
+                                <i class="fa-solid fa-person-rays"></i>
+                                <span>Destacar Orador</span>
+                            </div>
+                            <div class="do-cam-mode-desc">
+                                Quien habla se muestra en grande arriba.
+                            </div>
+                        </div>
                     </div>
 
                     ${conf.layout === "spotlight" ? `
-                    <div class="do-cam-gm-row" style="margin-top: 6px; padding-top: 8px; border-top: 1px solid #1e293b;">
-                        <label for="do-cam-pin-select">Protagonista en Escenario:</label>
-                        <select id="do-cam-pin-select" class="do-cam-select" style="width: 280px;">
+                    <div class="do-cam-gm-row" style="margin-top: 4px; padding-top: 8px; border-top: 1px solid #1e293b;">
+                        <label for="do-cam-pin-select">Orador principal:</label>
+                        <select id="do-cam-pin-select" class="do-cam-select">
                             ${pinOptionsHtml}
                         </select>
                     </div>
                     <div class="do-cam-gm-row">
-                        <label title="Evita que la cámara cambie si alguien hace una pausa breve al hablar">Estabilidad de voz (retardo al callar): <strong id="do-cam-hold-val" style="color:#38bdf8;">${conf.holdDelayMs}ms</strong></label>
-                        <input type="range" id="do-cam-hold-slider" min="500" max="3000" step="100" value="${conf.holdDelayMs}" style="width:180px;" />
+                        <label title="Evita que la cámara cambie si alguien hace una pausa breve al hablar">Retardo al callar: <strong id="do-cam-hold-val" style="color:#38bdf8;">${conf.holdDelayMs}ms</strong></label>
+                        <input type="range" id="do-cam-hold-slider" min="500" max="3000" step="100" value="${conf.holdDelayMs}" style="width:160px;" />
                     </div>
                     ` : ""}
                 </div>
@@ -693,28 +724,28 @@ function renderGmModalContent(backdrop, conf) {
                 <!-- 3. Opciones Visuales y Permisos del Jugador -->
                 <div class="do-cam-gm-card">
                     <div class="do-cam-gm-card-title">
-                        <span><i class="fa-solid fa-sliders"></i> OPCIONES DE ESCENA Y JUGADORES</span>
+                        <span><i class="fa-solid fa-sliders"></i> OPCIONES</span>
                     </div>
 
                     <div class="do-cam-gm-row">
                         <label for="do-cam-allow-peek-cb" style="cursor:pointer;">
-                            Mostrar botón <strong>"Ver Escena"</strong> a los jugadores para que puedan mirar el mapa
+                            Permitir botón <strong>"Ver Escena"</strong> a los jugadores
                         </label>
                         <input type="checkbox" id="do-cam-allow-peek-cb" ${conf.allowPlayerPeek ? "checked" : ""} />
                     </div>
 
                     <div class="do-cam-gm-row">
-                        <label for="do-cam-bg-select">Fondo sobre la escena actual:</label>
-                        <select id="do-cam-bg-select" class="do-cam-select" style="width: 230px;">
-                            <option value="blur" ${conf.backgroundStyle === "blur" ? "selected" : ""}>🌫️ Cristal Oscuro Desenfocado (Blur)</option>
-                            <option value="dark" ${conf.backgroundStyle === "dark" ? "selected" : ""}>🌑 Oscuro Opaco (Oculta el mapa al 100%)</option>
-                            <option value="dim" ${conf.backgroundStyle === "dim" ? "selected" : ""}>🌓 Semitransparente Suave</option>
+                        <label for="do-cam-bg-select">Fondo sobre la escena:</label>
+                        <select id="do-cam-bg-select" class="do-cam-select">
+                            <option value="blur" ${conf.backgroundStyle === "blur" ? "selected" : ""}>🌫️ Cristal Oscuro (Blur)</option>
+                            <option value="dark" ${conf.backgroundStyle === "dark" ? "selected" : ""}>🌑 Oscuro Opaco (100%)</option>
+                            <option value="dim" ${conf.backgroundStyle === "dim" ? "selected" : ""}>🌓 Semitransparente</option>
                         </select>
                     </div>
 
                     <div class="do-cam-gm-row">
-                        <label for="do-cam-aspect-select">Proporción de las cámaras:</label>
-                        <select id="do-cam-aspect-select" class="do-cam-select" style="width: 230px;">
+                        <label for="do-cam-aspect-select">Proporción de cámaras:</label>
+                        <select id="do-cam-aspect-select" class="do-cam-select">
                             <option value="4/3" ${conf.aspectRatio === "4/3" ? "selected" : ""}>📺 Estándar (4:3)</option>
                             <option value="16/9" ${conf.aspectRatio === "16/9" ? "selected" : ""}>🎬 Panorámico (16:9)</option>
                         </select>
@@ -722,14 +753,14 @@ function renderGmModalContent(backdrop, conf) {
 
                     <div class="do-cam-gm-row">
                         <label for="do-cam-pause-dc-cb" style="cursor:pointer;">
-                            Pausar bocadillos inferiores de <em>Diálogos Centrales</em> mientras las cámaras están en el centro
+                            Ocultar <em>Diálogos Centrales</em> con cámaras en el centro
                         </label>
                         <input type="checkbox" id="do-cam-pause-dc-cb" ${conf.pauseDialogosCentrales ? "checked" : ""} />
                     </div>
 
                     <div class="do-cam-gm-row">
                         <label for="do-cam-portrait-cb" style="cursor:pointer;">
-                            Usar retrato del PJ automáticamente si un jugador no tiene avatar configurado
+                            Usar retrato del PJ si un jugador no tiene avatar
                         </label>
                         <input type="checkbox" id="do-cam-portrait-cb" ${conf.useCharacterPortraitFallback ? "checked" : ""} />
                     </div>
@@ -750,9 +781,9 @@ function renderGmModalContent(backdrop, conf) {
         ui.notifications?.info("Todos los jugadores han vuelto a la vista central de cámaras.");
     });
 
-    backdrop.querySelectorAll(".do-cam-mode-option").forEach(btn => {
-        btn.addEventListener("click", async () => {
-            const chosenLayout = btn.dataset.layout;
+    backdrop.querySelectorAll(".do-cam-mode-option").forEach(card => {
+        card.addEventListener("click", async () => {
+            const chosenLayout = card.dataset.layout;
             await updateConfig({ layout: chosenLayout });
         });
     });
