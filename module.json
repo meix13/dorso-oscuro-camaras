@@ -1,0 +1,26 @@
+{
+  "id": "dorso-oscuro-camaras",
+  "title": "Dorso Oscuro - Modo Conversación de Cámaras",
+  "description": "Permite al Máster llevar todas las cámaras de vídeo/avatares al centro de la pantalla tapando la escena actual (en modo Cuadrícula o Destacar Orador por voz) o devolverlas a la barra normal en cualquier momento. Los jugadores disponen de un botón rápido para ver la escena cuando lo necesiten mientras fichas, diarios y chat siguen accesibles.",
+  "version": "1.0.0",
+  "compatibility": {
+    "minimum": "12",
+    "verified": "14.369",
+    "maximum": "14"
+  },
+  "authors": [
+    {
+      "name": "Miguel Ángel Lucas"
+    }
+  ],
+  "esmodules": [
+    "scripts/camaras-conversacion.js"
+  ],
+  "styles": [
+    "styles/camaras-conversacion.css"
+  ],
+  "socket": true,
+  "url": "https://github.com/meix13/dorso-oscuro-camaras",
+  "manifest": "https://raw.githubusercontent.com/meix13/dorso-oscuro-camaras/main/module.json",
+  "download": "https://github.com/meix13/dorso-oscuro-camaras/archive/refs/heads/main.zip"
+}
