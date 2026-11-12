@@ -216,7 +216,7 @@ function getNormalSidebarWidth() {
 function applyNormalSidebarWidth(widthPx, persist = false) {
     const clamped = Math.max(160, Math.min(580, Math.round(Number(widthPx) || 250)));
     document.body.style.setProperty("--do-normal-av-width", `${clamped}px`);
-    const camViews = document.getElementById("camera-views");
+    const camViews = getCameraViewsElement();
     if (camViews) {
         camViews.style.setProperty("--do-normal-av-width", `${clamped}px`);
     }
@@ -232,7 +232,7 @@ function applyNormalSidebarWidth(widthPx, persist = false) {
 }
 
 function ensureNormalSidebarResizeHandle() {
-    const camViews = document.getElementById("camera-views");
+    const camViews = getCameraViewsElement();
     if (!camViews) return;
 
     let handle = camViews.querySelector("#do-cam-resize-handle");
@@ -485,7 +485,9 @@ function applyMediaElementIsolation(mediaEl, allowed, isSelf) {
    ========================================================================== */
 
 function getCameraViewsElement() {
-    return document.getElementById("camera-views");
+    const el = document.getElementById("camera-views");
+    if (!el || el.tagName === "TEMPLATE") return null;
+    return el;
 }
 
 function getVisibleCameraElements() {
@@ -1145,7 +1147,8 @@ function renderOrUpdateGmBar(conf) {
     if (!game.user?.isGM) return;
 
     const camViews = getCameraViewsElement();
-    const userControls = camViews?.querySelector(":scope > .user-controls");
+    if (!camViews) return;
+    const userControls = camViews.querySelector(":scope > .user-controls");
 
     let bar = document.getElementById("do-cam-gm-bar");
     if (!bar) {
@@ -1155,8 +1158,8 @@ function renderOrUpdateGmBar(conf) {
 
     if (userControls && bar.nextElementSibling !== userControls) {
         userControls.before(bar);
-    } else if (!userControls && !bar.parentElement) {
-        document.body.appendChild(bar);
+    } else if (!userControls && bar.parentElement !== camViews) {
+        camViews.appendChild(bar);
     }
 
     setClass(bar, "is-center-active", conf.active);

@@ -24,7 +24,8 @@ body.do-cam-player-peek #ui-left {
     max-width: none !important;
 }
 
-/* Aplicar el ancho personalizado a la columna izquierda de cámaras en Modo Normal (cuando no está minimizada ni horizontal) */
+/* Aplicar el ancho personalizado a la columna izquierda de cámaras en Modo Normal (cuando no está minimizada ni horizontal).
+   Forzamos left: 0 y top: 0 porque en Foundry v14 ApplicationV2.#applyPosition asigna un left inline centrado en pantalla. */
 body:not(.do-cam-center-active) #camera-views:not(.minimized):not(.horizontal):not(.camera-position-bottom):not(.camera-position-top),
 body.do-cam-player-peek #camera-views:not(.minimized):not(.horizontal):not(.camera-position-bottom):not(.camera-position-top) {
     --av-width: var(--do-normal-av-width, 250px) !important;
@@ -32,6 +33,10 @@ body.do-cam-player-peek #camera-views:not(.minimized):not(.horizontal):not(.came
     min-width: 160px !important;
     max-width: 580px !important;
     position: relative !important;
+    left: 0 !important;
+    top: 0 !important;
+    right: auto !important;
+    bottom: auto !important;
     box-sizing: border-box !important;
 }
 
