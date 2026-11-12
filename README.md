@@ -1,21 +1,21 @@
 # Dorso Oscuro - Modo Conversación de Cámaras (`dorso-oscuro-camaras`)
 
-Módulo para **Foundry VTT (v12 / v13 / v14)** que permite al Máster alternar en tiempo real las cámaras de vídeo y avatares (`#camera-views`) entre su **barra normal** y el **centro de la pantalla (Modo Conversación)**, tapando la escena actual pero manteniendo **fichas de personaje, diarios y chat siempre accesibles por encima**.
+Módulo para **Foundry VTT (v12 / v13 / v14)** que permite al Máster alternar en tiempo real las cámaras de vídeo y avatares (`#camera-views`) entre su **barra normal** y el **centro de la pantalla (Modo Conversación)**, crear **Salas Privadas instantáneas** con jugadores elegidos y redimensionar libremente la columna izquierda de cámaras.
 
 Totalmente compatible con **LiveKit (`avclient-livekit`)**, WebRTC nativo de Foundry y módulos de retratos/avatares.
 
 ## Características principales
 
-1. **Alternancia instantánea (Barra Normal ↔ Centro):**
-   - El Máster puede enviar las cámaras de todos los jugadores al centro o devolverlas a su barra normal en cualquier momento desde el botón flotante inferior, la barra de herramientas de escena, la barra superior o el atajo `Alt + C`.
-2. **Dos modos de visualización en el Centro:**
-   - **Modo Cuadrícula (Normal):** Todas las cámaras se muestran en grande con el mismo tamaño, adaptándose automáticamente al número de participantes conectados (`1` a `8+`) y resaltando con un borde luminoso a quien habla.
-   - **Modo Destacar Orador (Escenario / Spotlight):** Quien habla por voz se sitúa en grande en la fila principal superior (soportando hasta 2 personas simultáneas en diálogos cruzados) y el resto de cámaras se alinean debajo.
-     - **Sin saltos ni parpadeos:** Incluye retardo configurable al callar (`1400ms` por defecto) y **retención del último orador**, de modo que la cámara principal nunca da tirones durante las pausas al hablar.
-     - **Fijar Orador (Pin 📌):** El Máster puede fijar manualmente a cualquier jugador o a sí mismo pasando el ratón sobre su cámara y pulsando el icono 📌 (o desde el selector del panel).
-3. **Botón "Ver Escena" para los jugadores:**
-   - Mientras el Modo Conversación está activo, los jugadores disponen de un botón superior **Ver Escena / Volver a Cámaras** para devolver temporalmente las cámaras a su barra normal en su propia pantalla si necesitan consultar el mapa, sin afectar al resto de la mesa.
-   - El Máster cuenta además con el botón **Traer todos al centro** para resincronizar a todos cuando quiera.
+1. **Alternancia instantánea (Barra Normal ↔ Centro con Pantalla Completa por defecto):**
+   - El Máster puede enviar las cámaras de todos los jugadores al centro o devolverlas a su barra normal desde el botón flotante inferior, la barra de herramientas de escena, la barra superior o el atajo `Alt + C`.
+   - Al activarse, entra por defecto en **Pantalla Completa** plegando automáticamente el panel lateral derecho de Foundry (como si el usuario hubiera pulsado el botón de plegar), pero permitiendo desplegarlo encima en cualquier momento o cambiar al modo con hueco lateral fijo.
+2. **Escalado exacto sin recortes (Container Queries) y Scroll de seguridad:**
+   - Tanto en **Modo Cuadrícula** como en **Modo Destacar Orador (Spotlight)**, las cámaras calculan su tamaño real sobre el contenedor disponible (`cqw`/`cqh`) teniendo en cuenta la proporción (`4:3` o `16:9`) y si la barra derecha está abierta o cerrada, evitando que ninguna cámara quede cortada. Incluye además scroll vertical de respaldo.
+3. **Sistema de Salas Privadas instantáneas (Máster + X jugadores):**
+   - El Máster puede elegir a uno o varios jugadores y llevarlos a una **Sala Privada** con un clic (y finalizarla en cualquier momento para reunir a todos).
+   - **Sin cortes ni reconexiones de LiveKit:** El grupo del Privado (Máster + elegidos) solo se ve y escucha entre sí, mientras que los jugadores que quedan fuera permanecen en la **Sala Principal** pudiendo seguir viéndose y hablando entre ellos sin escuchar nada del privado.
+4. **Barra izquierda redimensionable en Modo Normal:**
+   - En el modo normal de Foundry, incluye un tirador lateral de arrastre en el borde derecho de las cámaras (y un control deslizante en ajustes) para ampliar o reducir libremente el tamaño de la columna de cámaras (`160px` a `580px`) con scroll vertical.
 
 ## Instalación en Foundry VTT
 

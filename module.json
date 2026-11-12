@@ -1,8 +1,8 @@
 {
   "id": "dorso-oscuro-camaras",
   "title": "Dorso Oscuro - Modo Conversación de Cámaras",
-  "description": "Permite al Máster llevar todas las cámaras de vídeo/avatares al centro de la pantalla tapando la escena actual (en modo Cuadrícula o Destacar Orador por voz) o devolverlas a la barra normal en cualquier momento. Los jugadores disponen de un botón rápido para ver la escena cuando lo necesiten mientras fichas, diarios y chat siguen accesibles.",
-  "version": "1.0.0",
+  "description": "Permite al Máster llevar las cámaras de vídeo/avatares al centro de la pantalla (con Pantalla Completa por defecto en modo Cuadrícula o Destacar Orador por voz), crear Salas Privadas instantáneas con jugadores elegidos (mientras el resto sigue hablando en la Sala Principal) y redimensionar libremente la barra izquierda de cámaras en modo normal.",
+  "version": "1.1.0",
   "compatibility": {
     "minimum": "12",
     "verified": "14.369",

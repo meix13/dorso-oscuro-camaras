@@ -1,8 +1,136 @@
 /* ==========================================================================
-   Dorso Oscuro - Modo Conversación de Cámaras (Foundry VTT v12 / v13 / v14)
+   Dorso Oscuro - Modo Conversación de Cámaras y Salas Privadas (v12 / v13 / v14)
    ========================================================================== */
 
-/* 1. Neutralizar el transform de #ui-middle / #ui-left / #ui-right si contienen #camera-views */
+/* 0. AISLAMIENTO VISUAL DE SALAS PRIVADAS (APLICA TANTO EN CENTRO COMO EN BARRA NORMAL) */
+#camera-views .camera-view.do-cam-private-isolated {
+    display: none !important;
+}
+
+/* ==========================================================================
+   1. REDIMENSIONADO Y SCROLL DE LA BARRA IZQUIERDA EN MODO NORMAL
+   ========================================================================== */
+
+body.do-cam-is-resizing-bar,
+body.do-cam-is-resizing-bar * {
+    cursor: ew-resize !important;
+    user-select: none !important;
+}
+
+/* Permitir que #ui-left se adapte al ancho elegido sin tapar los botones de herramientas (#controls) */
+body:not(.do-cam-center-active) #ui-left,
+body.do-cam-player-peek #ui-left {
+    width: auto !important;
+    max-width: none !important;
+}
+
+/* Aplicar el ancho personalizado a la columna izquierda de cámaras en Modo Normal (cuando no está minimizada ni horizontal) */
+body:not(.do-cam-center-active) #camera-views:not(.minimized):not(.horizontal):not(.camera-position-bottom):not(.camera-position-top),
+body.do-cam-player-peek #camera-views:not(.minimized):not(.horizontal):not(.camera-position-bottom):not(.camera-position-top) {
+    --av-width: var(--do-normal-av-width, 250px) !important;
+    width: var(--do-normal-av-width, 250px) !important;
+    min-width: 160px !important;
+    max-width: 580px !important;
+    position: relative !important;
+    box-sizing: border-box !important;
+}
+
+/* Garantizar scroll vertical suave en Modo Normal si hay muchas cámaras o son grandes */
+body:not(.do-cam-center-active) #camera-views:not(.minimized):not(.horizontal):not(.camera-position-bottom):not(.camera-position-top) > .scrollable,
+body.do-cam-player-peek #camera-views:not(.minimized):not(.horizontal):not(.camera-position-bottom):not(.camera-position-top) > .scrollable {
+    width: 100% !important;
+    max-height: calc(100vh - 95px) !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding-right: 4px !important;
+    box-sizing: border-box !important;
+    scrollbar-width: thin;
+    scrollbar-color: #38bdf8 rgba(15, 23, 42, 0.5);
+}
+
+body:not(.do-cam-center-active) #camera-views:not(.minimized):not(.horizontal):not(.camera-position-bottom):not(.camera-position-top) .camera-container,
+body.do-cam-player-peek #camera-views:not(.minimized):not(.horizontal):not(.camera-position-bottom):not(.camera-position-top) .camera-container {
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+    box-sizing: border-box !important;
+}
+
+/* Hacer que cada tarjeta de cámara en la barra izquierda escale proporcionalmente al ancho elegido */
+body:not(.do-cam-center-active) #camera-views:not(.minimized):not(.horizontal):not(.camera-position-bottom):not(.camera-position-top) .camera-view,
+body.do-cam-player-peek #camera-views:not(.minimized):not(.horizontal):not(.camera-position-bottom):not(.camera-position-top) .camera-view {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    aspect-ratio: 4 / 3 !important;
+    flex: 0 0 auto !important;
+    box-sizing: border-box !important;
+}
+
+body:not(.do-cam-center-active) #camera-views:not(.minimized):not(.horizontal):not(.camera-position-bottom):not(.camera-position-top) .camera-view .video-container,
+body.do-cam-player-peek #camera-views:not(.minimized):not(.horizontal):not(.camera-position-bottom):not(.camera-position-top) .camera-view .video-container {
+    width: 100% !important;
+    height: 100% !important;
+    position: relative !important;
+}
+
+body:not(.do-cam-center-active) #camera-views:not(.minimized):not(.horizontal):not(.camera-position-bottom):not(.camera-position-top) .camera-view .video-container .user-avatar,
+body.do-cam-player-peek #camera-views:not(.minimized):not(.horizontal):not(.camera-position-bottom):not(.camera-position-top) .camera-view .video-container .user-avatar,
+body:not(.do-cam-center-active) #camera-views:not(.minimized):not(.horizontal):not(.camera-position-bottom):not(.camera-position-top) .camera-view .video-container .user-camera,
+body.do-cam-player-peek #camera-views:not(.minimized):not(.horizontal):not(.camera-position-bottom):not(.camera-position-top) .camera-view .video-container .user-camera {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+}
+
+/* Tirador de arrastre lateral (#do-cam-resize-handle) para ensanchar/estrechar la barra izquierda */
+#do-cam-resize-handle {
+    position: absolute;
+    top: 0;
+    right: -4px;
+    bottom: 36px;
+    width: 9px;
+    z-index: 98;
+    cursor: ew-resize;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: all;
+    touch-action: none;
+    transition: background 0.15s ease;
+}
+
+#do-cam-resize-handle .do-cam-resize-grip {
+    width: 3px;
+    height: 44px;
+    border-radius: 3px;
+    background: rgba(148, 163, 184, 0.28);
+    transition: all 0.15s ease;
+}
+
+#do-cam-resize-handle:hover .do-cam-resize-grip,
+body.do-cam-is-resizing-bar #do-cam-resize-handle .do-cam-resize-grip {
+    height: 76px;
+    background: #38bdf8;
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.85);
+}
+
+/* Ocultar el tirador cuando las cámaras están en el Centro, minimizadas o en barra horizontal */
+body.do-cam-center-active:not(.do-cam-player-peek) #do-cam-resize-handle,
+#camera-views.minimized #do-cam-resize-handle,
+#camera-views.horizontal #do-cam-resize-handle,
+#camera-views.camera-position-bottom #do-cam-resize-handle,
+#camera-views.camera-position-top #do-cam-resize-handle {
+    display: none !important;
+}
+
+/* ==========================================================================
+   2. PREPARACIÓN DEL ESCENARIO EN MODO CONVERSACIÓN (CENTRO DE PANTALLA)
+   ========================================================================== */
+
+/* Neutralizar el transform de #ui-middle / #ui-left / #ui-right si contienen #camera-views */
 body.do-cam-center-active:not(.do-cam-player-peek) #ui-middle:has(#camera-views),
 body.do-cam-center-active:not(.do-cam-player-peek) #ui-left:has(#camera-views),
 body.do-cam-center-active:not(.do-cam-player-peek) #ui-right:has(#camera-views) {
@@ -11,7 +139,8 @@ body.do-cam-center-active:not(.do-cam-player-peek) #ui-right:has(#camera-views) 
     height: 100% !important;
 }
 
-/* Mantener controles laterales del GM y el sidebar derecho por encima del escenario de cámaras */
+/* Mantener controles laterales del GM y el sidebar derecho por encima del escenario de cámaras
+   (para que si el usuario despliega el sidebar en Pantalla Completa, se superponga limpiamente) */
 body.do-cam-center-active:not(.do-cam-player-peek) #ui-left {
     z-index: 35 !important;
 }
@@ -47,7 +176,7 @@ body.do-cam-center-active.do-cam-pause-dc:not(.do-cam-player-peek) #dc-speakers-
 }
 
 /* ==========================================================================
-   2. CONTENEDOR #camera-views EN MODO CONVERSACIÓN (CENTRO DE PANTALLA)
+   3. CONTENEDOR #camera-views EN MODO CONVERSACIÓN (CON CONTAINER QUERIES)
    ========================================================================== */
 
 body.do-cam-center-active:not(.do-cam-player-peek) #camera-views {
@@ -55,26 +184,31 @@ body.do-cam-center-active:not(.do-cam-player-peek) #camera-views {
     top: 0 !important;
     left: 0 !important;
     bottom: 0 !important;
-    right: 310px !important; /* Respeta el sidebar derecho de Foundry (Chat, Diarios, Actores) */
+    right: 310px !important; /* Cuando no está en Pantalla Completa, deja espacio fijo al sidebar derecho */
     width: auto !important;
     height: auto !important;
     min-width: 0 !important;
     min-height: 0 !important;
     max-width: none !important;
     max-height: none !important;
-    z-index: 32 !important; /* Por encima de #board (0) y #ui-middle (30), debajo de Fichas/Diarios (100) */
+    z-index: 32 !important; /* Por encima de #board (0) y #ui-middle (30), debajo de #ui-right (35) y Fichas (100) */
     display: flex !important;
     flex-direction: column !important;
     justify-content: center !important;
     align-items: center !important;
-    padding: 54px 28px 44px 68px !important;
+    padding: 54px 28px 46px 68px !important;
     border: none !important;
     pointer-events: all !important;
     box-sizing: border-box !important;
-    transition: background 0.3s ease, right 0.25s ease;
+    transition: background 0.3s ease, right 0.25s ease, padding-top 0.2s ease;
 }
 
-/* Si el jugador o GM activa Ancho Completo */
+/* Si además hay Sala Privada activa y cámaras en el centro, damos margen superior para las 2 barras superiores */
+body.do-cam-center-active.do-cam-private-active:not(.do-cam-player-peek) #camera-views {
+    padding-top: 92px !important;
+}
+
+/* En Pantalla Completa (activo por defecto): ocupa todo el ancho (right: 0) */
 body.do-cam-center-active.do-cam-fullscreen:not(.do-cam-player-peek) #camera-views {
     right: 0 !important;
 }
@@ -98,33 +232,38 @@ body.do-cam-center-active.do-cam-bg-dim:not(.do-cam-player-peek) #camera-views {
     -webkit-backdrop-filter: blur(4px) !important;
 }
 
-/* Asegurar que la zona interior scrollable ocupe todo el escenario sin barras de scroll molestas */
+/* Zona interior con container-type: size para que 100cqw y 100cqh midan el hueco REAL disponible
+   (ya descontada la barra derecha de 310px si está visible) y permita scroll vertical de emergencia */
 body.do-cam-center-active:not(.do-cam-player-peek) #camera-views > .scrollable {
+    container-type: size !important;
     width: 100% !important;
     height: 100% !important;
     max-width: 100% !important;
     max-height: 100% !important;
     margin: 0 !important;
-    padding: 0 !important;
-    overflow: hidden !important;
+    padding: 4px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
     display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
+    flex-direction: column !important;
+    box-sizing: border-box !important;
+    scrollbar-width: thin;
+    scrollbar-color: #38bdf8 rgba(15, 23, 42, 0.4);
 }
 
 body.do-cam-center-active:not(.do-cam-player-peek) #camera-views .camera-container {
     width: 100% !important;
-    height: 100% !important;
+    height: auto !important;
     min-height: 0 !important;
     padding: 0 !important;
-    margin: 0 !important;
+    margin: auto !important; /* Centra vertical y horizontalmente, pero permite hacer scroll si desborda */
     display: flex !important;
     flex-direction: row !important;
     flex-wrap: wrap !important;
     justify-content: center !important;
     align-items: center !important;
     align-content: center !important;
-    gap: 18px !important;
+    gap: 16px !important;
     box-sizing: border-box !important;
 }
 
@@ -134,8 +273,8 @@ body.do-cam-center-active:not(.do-cam-player-peek) #camera-views > .user-control
     position: fixed !important;
     bottom: 0 !important;
     left: 0 !important;
-    width: var(--av-width, 300px) !important;
-    min-width: 240px !important;
+    width: 300px !important;
+    min-width: 250px !important;
     height: 34px !important;
     flex-direction: row !important;
     align-items: center !important;
@@ -160,7 +299,7 @@ body.do-cam-center-active:not(.do-cam-player-peek) #camera-views > .user-control
 }
 
 /* ==========================================================================
-   3. TARJETAS INDIVIDUALES (.camera-view) EN MODO CONVERSACIÓN
+   4. TARJETAS INDIVIDUALES (.camera-view) EN MODO CONVERSACIÓN
    ========================================================================== */
 
 body.do-cam-center-active:not(.do-cam-player-peek) #camera-views .camera-view {
@@ -171,12 +310,14 @@ body.do-cam-center-active:not(.do-cam-player-peek) #camera-views .camera-view {
     overflow: hidden !important;
     position: relative !important;
     flex: 0 0 auto !important;
+    width: auto !important;
+    max-width: 100% !important;
     aspect-ratio: var(--do-cam-aspect, 4 / 3) !important;
-    transition: width 0.36s cubic-bezier(0.22, 1, 0.36, 1),
-                height 0.36s cubic-bezier(0.22, 1, 0.36, 1),
-                transform 0.28s ease,
+    transition: width 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+                height 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+                transform 0.25s ease,
                 box-shadow 0.25s ease,
-                opacity 0.28s ease !important;
+                opacity 0.25s ease !important;
 }
 
 /* Neutralizar estado minimizado si algún jugador tenía la barra de cámaras minimizada */
@@ -247,53 +388,63 @@ body.do-cam-center-active:not(.do-cam-player-peek) #camera-views .camera-view .b
 }
 
 body.do-cam-center-active:not(.do-cam-player-peek) #camera-views .camera-view .player-name {
-    min-height: 42px !important;
-    font-size: 15px !important;
+    min-height: 40px !important;
+    font-size: 14.5px !important;
     text-shadow: 0 2px 6px #000 !important;
 }
 
 /* ==========================================================================
-   4. MODO A: CUADRÍCULA (TODOS IGUALES EN EL CENTRO)
+   5. MODO A: CUADRÍCULA ADAPTATIVA AL CONTENEDOR REAL (100% SIN RECORTES)
+   Usa unidades cqw y cqh del contenedor #camera-views > .scrollable y --do-cam-ar
+   para garantizar que SIEMPRE quepan todas las cámaras con o sin barra derecha.
    ========================================================================== */
 
 body.do-cam-center-active.do-cam-layout-grid:not(.do-cam-player-peek) .do-cam-flex-break {
     display: none !important;
 }
 
-/* 1 cámara */
+/* 1 cámara (1x1) */
 body.do-cam-center-active.do-cam-layout-grid:not(.do-cam-player-peek) #camera-views[data-cam-count="1"] .camera-view {
-    height: min(74vh, 52vw) !important;
+    height: min(88cqh, calc(92cqw / var(--do-cam-ar, 1.3333))) !important;
 }
 
-/* 2 cámaras */
+/* 2 cámaras (2x1) */
 body.do-cam-center-active.do-cam-layout-grid:not(.do-cam-player-peek) #camera-views[data-cam-count="2"] .camera-view {
-    height: min(56vh, 34vw) !important;
+    height: min(84cqh, calc((96cqw - 24px) / 2 / var(--do-cam-ar, 1.3333))) !important;
 }
 
-/* 3 o 4 cámaras (2x2) */
+/* 3 o 4 cámaras (2 columnas x 2 filas) */
 body.do-cam-center-active.do-cam-layout-grid:not(.do-cam-player-peek) #camera-views[data-cam-count="3"] .camera-view,
 body.do-cam-center-active.do-cam-layout-grid:not(.do-cam-player-peek) #camera-views[data-cam-count="4"] .camera-view {
-    height: min(41vh, 31vw) !important;
+    height: min(calc((96cqh - 22px) / 2), calc((96cqw - 24px) / 2 / var(--do-cam-ar, 1.3333))) !important;
 }
 
-/* 5 o 6 cámaras (3x2) */
+/* 5 o 6 cámaras (3 columnas x 2 filas) */
 body.do-cam-center-active.do-cam-layout-grid:not(.do-cam-player-peek) #camera-views[data-cam-count="5"] .camera-view,
 body.do-cam-center-active.do-cam-layout-grid:not(.do-cam-player-peek) #camera-views[data-cam-count="6"] .camera-view {
-    height: min(39vh, 22.5vw) !important;
+    height: min(calc((96cqh - 22px) / 2), calc((96cqw - 44px) / 3 / var(--do-cam-ar, 1.3333))) !important;
 }
 
-/* 7 o más cámaras */
+/* 7 u 8 cámaras (4 columnas x 2 filas) */
 body.do-cam-center-active.do-cam-layout-grid:not(.do-cam-player-peek) #camera-views[data-cam-count="7"] .camera-view,
 body.do-cam-center-active.do-cam-layout-grid:not(.do-cam-player-peek) #camera-views[data-cam-count="8"] .camera-view {
-    height: min(34vh, 17.5vw) !important;
+    height: min(calc((96cqh - 22px) / 2), calc((96cqw - 64px) / 4 / var(--do-cam-ar, 1.3333))) !important;
+}
+
+/* 9 a 12 cámaras (4 columnas x 3 filas) */
+body.do-cam-center-active.do-cam-layout-grid:not(.do-cam-player-peek) #camera-views[data-cam-count="9"] .camera-view,
+body.do-cam-center-active.do-cam-layout-grid:not(.do-cam-player-peek) #camera-views[data-cam-count="10"] .camera-view,
+body.do-cam-center-active.do-cam-layout-grid:not(.do-cam-player-peek) #camera-views[data-cam-count="11"] .camera-view,
+body.do-cam-center-active.do-cam-layout-grid:not(.do-cam-player-peek) #camera-views[data-cam-count="12"] .camera-view {
+    height: min(calc((96cqh - 42px) / 3), calc((96cqw - 64px) / 4 / var(--do-cam-ar, 1.3333))) !important;
 }
 
 /* ==========================================================================
-   5. MODO B: DESTACAR ORADOR (ESCENARIO / SPOTLIGHT)
+   6. MODO B: DESTACAR ORADOR (ESCENARIO / SPOTLIGHT ADAPTATIVO)
    ========================================================================== */
 
 body.do-cam-center-active.do-cam-layout-spotlight:not(.do-cam-player-peek) #camera-views .camera-container {
-    gap: 14px 18px !important;
+    gap: 14px 16px !important;
 }
 
 /* Salto de línea flex entre el escenario principal (order 1) y la fila inferior (order 3) */
@@ -310,7 +461,7 @@ body.do-cam-center-active.do-cam-layout-spotlight:not(.do-cam-player-peek) .do-c
 /* Cámara(s) en el Escenario Principal (arriba en grande) */
 body.do-cam-center-active.do-cam-layout-spotlight:not(.do-cam-player-peek) #camera-views .camera-view.do-spotlight-main {
     order: 1 !important;
-    height: min(55vh, 43vw) !important;
+    height: min(63cqh, calc(88cqw / var(--do-cam-ar, 1.3333))) !important;
     z-index: 2 !important;
     box-shadow: 0 20px 50px rgba(0, 0, 0, 0.92),
                 0 0 30px rgba(56, 189, 248, 0.35) !important;
@@ -318,14 +469,14 @@ body.do-cam-center-active.do-cam-layout-spotlight:not(.do-cam-player-peek) #came
 
 /* Si hay 2 personas hablando a la vez en el escenario principal, se reparten la fila superior */
 body.do-cam-center-active.do-cam-layout-spotlight:not(.do-cam-player-peek) #camera-views[data-spotlight-count="2"] .camera-view.do-spotlight-main {
-    height: min(48vh, 33vw) !important;
+    height: min(58cqh, calc((94cqw - 24px) / 2 / var(--do-cam-ar, 1.3333))) !important;
 }
 
-/* Cámaras secundarias en la fila inferior */
+/* Cámaras secundarias en la fila inferior: se ajustan para caber todas en 1 sola fila sin recortes */
 body.do-cam-center-active.do-cam-layout-spotlight:not(.do-cam-player-peek) #camera-views .camera-view:not(.do-spotlight-main) {
     order: 3 !important;
-    height: min(21vh, 15vw) !important;
-    opacity: 0.9;
+    height: min(27cqh, calc((94cqw - (var(--do-sec-count, 4) * 16px)) / var(--do-sec-count, 4) / var(--do-cam-ar, 1.3333))) !important;
+    opacity: 0.92;
 }
 
 body.do-cam-center-active.do-cam-layout-spotlight:not(.do-cam-player-peek) #camera-views .camera-view:not(.do-spotlight-main):hover {
@@ -375,7 +526,7 @@ body.do-cam-center-active:not(.do-cam-player-peek) .camera-view .do-cam-pin-btn.
 }
 
 /* ==========================================================================
-   6. BOTONES BASE Y BARRA SUPERIOR DE CONTROL (JUGADORES Y MÁSTER)
+   7. BOTONES BASE, BARRA SUPERIOR Y BANNER DE SALA PRIVADA
    ========================================================================== */
 
 /* Resetear el height: var(--button-size) global de Foundry v14 para que ningún botón se descabale */
@@ -452,6 +603,7 @@ body.do-cam-center-active:not(.do-cam-player-peek) .camera-view .do-cam-pin-btn.
     color: #fff !important;
 }
 
+/* Barra superior cuando Modo Conversación está activo */
 #do-cam-topbar {
     position: fixed;
     top: 10px;
@@ -459,6 +611,7 @@ body.do-cam-center-active:not(.do-cam-player-peek) .camera-view .do-cam-pin-btn.
     transform: translateX(-50%);
     z-index: 90; /* Por encima de #camera-views (32), debajo de ventanas flotantes (100) */
     min-height: 34px;
+    max-width: 96vw;
     background: rgba(9, 13, 24, 0.94);
     border: 1px solid #38bdf8;
     border-radius: 8px;
@@ -524,6 +677,7 @@ body.do-cam-center-active #do-cam-topbar {
     display: flex;
     align-items: center;
     gap: 5px;
+    flex-wrap: wrap;
 }
 
 .do-cam-sep {
@@ -531,6 +685,26 @@ body.do-cam-center-active #do-cam-topbar {
     height: 18px;
     background: #1e293b;
     margin: 0 2px;
+}
+
+.do-cam-speaker-bar {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid #334155;
+    padding: 2px 6px;
+    border-radius: 6px;
+}
+
+.do-cam-speaker-label {
+    font-size: 10.5px;
+    color: #fbbf24;
+    font-weight: bold;
+    margin-right: 2px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
 }
 
 /* Destello llamativo cuando el jugador está en modo "Viendo Escena" para que sepa volver fácilmente */
@@ -542,8 +716,113 @@ body.do-cam-player-peek #do-cam-peek-btn {
     box-shadow: 0 0 14px rgba(56, 189, 248, 0.65) !important;
 }
 
+/* Banner Flotante de Sala Privada (#do-cam-private-banner) */
+#do-cam-private-banner {
+    position: fixed;
+    top: 10px;
+    left: calc(50% - 155px);
+    transform: translateX(-50%);
+    z-index: 91;
+    min-height: 34px;
+    max-width: 94vw;
+    background: rgba(15, 11, 5, 0.95);
+    border: 1px solid #f59e0b;
+    border-radius: 8px;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.88), 0 0 18px rgba(245, 158, 11, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 4px 11px;
+    font-family: monospace;
+    font-size: 12px;
+    color: #fde68a;
+    user-select: none;
+    pointer-events: all;
+    backdrop-filter: blur(6px);
+}
+
+#do-cam-private-banner.is-in-main {
+    background: rgba(9, 13, 24, 0.95);
+    border-color: #64748b;
+    color: #cbd5e1;
+    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.85);
+}
+
+/* Si también está visible la barra de Modo Conversación, colocar el banner de privado justo debajo */
+body.do-cam-center-active #do-cam-private-banner {
+    top: 50px;
+}
+
+body.do-cam-center-active.do-cam-fullscreen #do-cam-private-banner {
+    left: 50%;
+}
+
+.do-cam-priv-banner-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.do-cam-priv-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #f59e0b;
+    box-shadow: 0 0 8px #f59e0b;
+    animation: do-cam-pulse 1.5s infinite;
+    flex-shrink: 0;
+}
+
+.do-cam-priv-badge {
+    background: rgba(245, 158, 11, 0.2);
+    border: 1px solid #d97706;
+    color: #fbbf24;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: bold;
+    text-transform: uppercase;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    flex-shrink: 0;
+}
+
+.do-cam-priv-badge.is-main-room {
+    background: rgba(100, 116, 139, 0.25);
+    border-color: #475569;
+    color: #e2e8f0;
+}
+
+.do-cam-priv-info {
+    color: #f8fafc;
+    font-size: 11.5px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.do-cam-priv-info strong {
+    color: #fbbf24;
+}
+
+.do-cam-priv-info small {
+    color: #94a3b8;
+    margin-left: 5px;
+    font-size: 10.5px;
+}
+
+.do-cam-priv-banner-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
 /* ==========================================================================
-   7. BARRA DEL MÁSTER FIJA ENCIMA DE LOS CONTROLES DE CÁMARA/MICRÓFONO
+   8. BARRA DEL MÁSTER FIJA ENCIMA DE LOS CONTROLES DE CÁMARA/MICRÓFONO
    ========================================================================== */
 
 #do-cam-gm-bar {
@@ -551,7 +830,7 @@ body.do-cam-player-peek #do-cam-peek-btn {
     background: rgba(9, 13, 24, 0.94);
     border-top: 1px solid #1e293b;
     border-bottom: 1px solid #1e293b;
-    padding: 3px 6px;
+    padding: 3px 5px;
     margin: 0 0 -8px 0; /* Se pega justo encima de #camera-views > .user-controls anulando el gap de 8px */
     display: flex;
     align-items: center;
@@ -566,15 +845,22 @@ body.do-cam-player-peek #do-cam-peek-btn {
 }
 
 #do-cam-gm-bar .do-cam-gm-bar-main {
-    flex: 1 !important;
+    flex: 1 1 auto !important;
     padding: 3px 6px !important;
-    font-size: 11px !important;
+    font-size: 10.5px !important;
 }
 
+#do-cam-gm-bar .do-cam-gm-bar-priv {
+    flex: 1 1 auto !important;
+    padding: 3px 6px !important;
+    font-size: 10.5px !important;
+}
+
+#do-cam-gm-bar .do-cam-gm-bar-endpriv,
 #do-cam-gm-bar .do-cam-gm-bar-cfg {
     flex: 0 0 auto !important;
-    padding: 3px 7px !important;
-    font-size: 11px !important;
+    padding: 3px 6px !important;
+    font-size: 10.5px !important;
 }
 
 /* Si la barra de cámaras está en modo horizontal (abajo/arriba) en Modo Normal */
@@ -582,7 +868,7 @@ body.do-cam-player-peek #do-cam-peek-btn {
     position: fixed;
     bottom: 34px;
     left: 0;
-    width: 240px;
+    width: 280px;
     margin: 0;
     border-right: 1px solid #1e293b;
     border-radius: 0 6px 0 0;
@@ -594,8 +880,8 @@ body.do-cam-center-active:not(.do-cam-player-peek) #do-cam-gm-bar {
     position: fixed !important;
     bottom: 34px !important;
     left: 0 !important;
-    width: var(--av-width, 300px) !important;
-    min-width: 240px !important;
+    width: 300px !important;
+    min-width: 250px !important;
     margin: 0 !important;
     border-right: 1px solid #1e293b !important;
     border-radius: 0 6px 0 0 !important;
@@ -604,13 +890,13 @@ body.do-cam-center-active:not(.do-cam-player-peek) #do-cam-gm-bar {
 
 /* Si el dock vertical está minimizado en Modo Normal, mantener la barrita legible abajo a la izquierda */
 #camera-views.minimized.vertical #do-cam-gm-bar {
-    min-width: 195px;
+    min-width: 220px;
     border-right: 1px solid #1e293b;
     border-radius: 0 6px 0 0;
 }
 
 /* ==========================================================================
-   8. MODAL DE CONFIGURACIÓN DEL MÁSTER (COMPACTO Y SIN DESBORDAMIENTOS)
+   9. MODALES DE CONFIGURACIÓN DEL MÁSTER Y DE SALA PRIVADA
    ========================================================================== */
 
 .do-cam-gm-backdrop {
@@ -626,7 +912,7 @@ body.do-cam-center-active:not(.do-cam-player-peek) #do-cam-gm-bar {
 }
 
 .do-cam-gm-modal {
-    width: 520px;
+    width: 540px;
     max-width: 94vw;
     max-height: 88vh;
     background: #090d16;
@@ -688,6 +974,7 @@ body.do-cam-center-active:not(.do-cam-player-peek) #do-cam-gm-bar {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 8px;
 }
 
 .do-cam-gm-row {
@@ -794,4 +1081,117 @@ body.do-cam-center-active:not(.do-cam-player-peek) #do-cam-gm-bar {
     height: 28px !important;
     width: 220px !important;
     max-width: 55% !important;
+}
+
+/* Tarjetas de selección de jugadores para Sala Privada */
+.do-cam-priv-user-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    max-height: 290px;
+    overflow-y: auto;
+    padding-right: 2px;
+}
+
+.do-cam-priv-user-card {
+    background: #060a14;
+    border: 1.5px solid #1e293b;
+    border-radius: 7px;
+    padding: 7px 9px;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.15s ease;
+    margin: 0 !important;
+}
+
+.do-cam-priv-user-card:hover {
+    border-color: #475569;
+    background: #0b1222;
+}
+
+.do-cam-priv-user-card.is-selected {
+    border-color: #f59e0b;
+    background: rgba(245, 158, 11, 0.14);
+    box-shadow: 0 0 12px rgba(245, 158, 11, 0.2);
+}
+
+.do-cam-priv-user-card.is-offline {
+    opacity: 0.65;
+}
+
+.do-cam-priv-user-cb {
+    display: none !important;
+}
+
+.do-cam-priv-avatar {
+    width: 34px !important;
+    height: 34px !important;
+    border-radius: 6px !important;
+    object-fit: cover !important;
+    border: 1px solid #334155 !important;
+    flex-shrink: 0;
+}
+
+.do-cam-priv-user-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+}
+
+.do-cam-priv-user-name {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    color: #f8fafc;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.do-cam-priv-user-sub {
+    font-size: 10.5px;
+    color: #94a3b8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.do-cam-status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.do-cam-status-dot.online {
+    background: #10b981;
+    box-shadow: 0 0 6px #10b981;
+}
+
+.do-cam-status-dot.offline {
+    background: #64748b;
+}
+
+.do-cam-priv-check-icon {
+    font-size: 15px;
+    color: #475569;
+    flex-shrink: 0;
+}
+
+.do-cam-priv-user-card.is-selected .do-cam-priv-check-icon {
+    color: #f59e0b;
+}
+
+.do-cam-empty-msg {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 16px;
+    color: #64748b;
+    font-size: 12px;
 }
