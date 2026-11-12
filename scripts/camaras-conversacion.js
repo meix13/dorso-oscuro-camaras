@@ -1285,7 +1285,7 @@ function renderPrivateModalContent(backdrop, conf) {
             const charName = u.character?.name || "";
             const avatarSrc = u.character?.img || u.avatar || "icons/svg/mystery-man.svg";
             return `
-                <label class="do-cam-priv-user-card ${isSelected ? "is-selected" : ""} ${u.active ? "is-online" : "is-offline"}" data-user-id="${u.id}">
+                <div class="do-cam-priv-user-card ${isSelected ? "is-selected" : ""} ${u.active ? "is-online" : "is-offline"}" data-user-id="${u.id}" role="button" tabindex="0">
                     <input type="checkbox" class="do-cam-priv-user-cb" value="${u.id}" ${isSelected ? "checked" : ""} />
                     <img src="${avatarSrc}" alt="${u.name}" class="do-cam-priv-avatar" />
                     <div class="do-cam-priv-user-meta">
@@ -1298,9 +1298,9 @@ function renderPrivateModalContent(backdrop, conf) {
                         </div>
                     </div>
                     <div class="do-cam-priv-check-icon">
-                        <i class="fa-solid ${isSelected ? "fa-circle-check" : "fa-circle"}</i>
+                        <i class="fa-solid ${isSelected ? "fa-circle-check" : "fa-circle"}"></i>
                     </div>
-                </label>
+                </div>
             `;
         }).join("");
 
@@ -1380,8 +1380,15 @@ function renderPrivateModalContent(backdrop, conf) {
         });
     };
 
-    backdrop.querySelectorAll(".do-cam-priv-user-cb").forEach(cb => {
-        cb.addEventListener("change", syncCardUI);
+    backdrop.querySelectorAll(".do-cam-priv-user-card").forEach(card => {
+        card.addEventListener("click", (ev) => {
+            ev.preventDefault();
+            const cb = card.querySelector(".do-cam-priv-user-cb");
+            if (cb) {
+                cb.checked = !cb.checked;
+                syncCardUI();
+            }
+        });
     });
 
     backdrop.querySelector("#do-cam-priv-sel-online")?.addEventListener("click", () => {
