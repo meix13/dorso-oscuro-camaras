@@ -544,6 +544,15 @@ function ensureCameraContainerHelpers(conf) {
         container.appendChild(flexBreak);
     }
 
+    // Inclinación aleatoria sutil para el estilo Polaroid en Modo Grande (estable por sesión)
+    container.querySelectorAll(".camera-view[data-user]").forEach((viewEl, idx) => {
+        if (!viewEl.style.getPropertyValue("--do-polaroid-tilt")) {
+            const sign = (idx % 2 === 0 ? 1 : -1) * (Math.random() > 0.2 ? 1 : -1);
+            const deg = (sign * (0.75 + Math.random() * 1.15)).toFixed(2);
+            viewEl.style.setProperty("--do-polaroid-tilt", `${deg}deg`);
+        }
+    });
+
     if (game.user?.isGM) {
         const pinnedSet = new Set(conf.pinnedUserIds || []);
         container.querySelectorAll(".camera-view[data-user]").forEach(viewEl => {
