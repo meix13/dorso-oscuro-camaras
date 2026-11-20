@@ -1149,15 +1149,188 @@ function renderOrUpdateTopBar(conf, effectivePeek) {
 }
 
 /* ==========================================================================
-   5. BARRA DEL MÁSTER FIJA ENCIMA DE LOS CONTROLES DE CÁMARA/MICRÓFONO
+   5. BARRA DEL MÁSTER (ACOPLADA EN V13/V14 O ARRASTRABLE LIBREMENTE)
    ========================================================================== */
+
+const GM_BAR_POS_STORAGE_KEY = "dorso-oscuro-camaras.gmBarPos";
+let gmBarResizeListenerBound = false;
+
+function loadGmBarCustomPos() {
+    try {
+        const raw = localStorage.getItem(GM_BAR_POS_STORAGE_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (typeof parsed?.left === "number" && typeof parsed?.top === "number") {
+            return parsed;
+        }
+    } catch (_err) {
+        // Ignorar errores de almacenamiento
+    }
+    return null;
+}
+
+function saveGmBarCustomPos(left, top) {
+    try {
+        localStorage.setItem(GM_BAR_POS_STORAGE_KEY, JSON.stringify({ left: Math.round(left), top: Math.round(top) }));
+    } catch (_err) {
+        // Ignorar errores de almacenamiento
+    }
+}
+
+function clearGmBarCustomPos() {
+    try {
+        localStorage.removeItem(GM_BAR_POS_STORAGE_KEY);
+    } catch (_err) {
+        // Ignorar errores de almacenamiento
+    }
+}
+
+function clampGmBarCoords(bar, left, top) {
+    const rect = bar.getBoundingClientRect();
+    const w = rect.width || 270;
+    const h = rect.height || 34;
+    const maxLeft = Math.max(8, window.innerWidth - w - 8);
+    const maxTop = Math.max(8, window.innerHeight - h - 8);
+    return {
+        left: Math.max(8, Math.min(maxLeft, left)),
+        top: Math.max(8, Math.min(maxTop, top))
+    };
+}
+
+function computeSafeBottomLeftOffset() {
+    let highestFromBottom = 42;
+    const candidates = [
+        document.getElementById("players"),
+        document.querySelector("#camera-views > .user-controls"),
+        document.querySelector("#camera-views .user-controls")
+    ];
+
+    for (const el of candidates) {
+        if (!el) continue;
+        const style = window.getComputedStyle(el);
+        if (style.display === "none" || style.visibility === "hidden") continue;
+        const rect = el.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0) continue;
+        // Solo elementos que ocupen la zona inferior izquierda
+        if (rect.left < 340 && rect.bottom > window.innerHeight - 360) {
+            const topFromBottom = window.innerHeight - rect.top;
+            if (topFromBottom > highestFromBottom && topFromBottom < window.innerHeight - 120) {
+                highestFromBottom = topFromBottom;
+            }
+        }
+    }
+
+    return Math.round(highestFromBottom + 8);
+}
+
+function positionGmBar(bar, camViews, conf) {
+    if (!bar) return;
+
+    const customPos = loadGmBarCustomPos();
+    if (customPos) {
+        if (bar.parentElement !== document.body) {
+            document.body.appendChild(bar);
+        }
+        bar.classList.remove("is-floating-auto");
+        bar.classList.add("is-floating-custom");
+        bar.style.bottom = "";
+        bar.style.right = "";
+        const clamped = clampGmBarCoords(bar, customPos.left, customPos.top);
+        bar.style.left = `${clamped.left}px`;
+        bar.style.top = `${clamped.top}px`;
+        return;
+    }
+
+    const userControls = camViews?.querySelector(":scope > .user-controls");
+    const isNormalVertical = Boolean(
+        camViews &&
+        userControls &&
+        !conf.active &&
+        !camViews.classList.contains("horizontal") &&
+        !camViews.classList.contains("minimized") &&
+        !camViews.classList.contains("camera-position-bottom") &&
+        !camViews.classList.contains("camera-position-top")
+    );
+
+    if (isNormalVertical) {
+        bar.classList.remove("is-floating-auto", "is-floating-custom");
+        bar.style.left = "";
+        bar.style.top = "";
+        bar.style.right = "";
+        bar.style.bottom = "";
+        if (bar.nextElementSibling !== userControls) {
+            userControls.before(bar);
+        }
+        return;
+    }
+
+    // En Modo Conversación, barra horizontal o V13: flotante sobre el obstáculo más alto abajo-izquierda
+    if (bar.parentElement !== document.body) {
+        document.body.appendChild(bar);
+    }
+    bar.classList.remove("is-floating-custom");
+    bar.classList.add("is-floating-auto");
+    bar.style.top = "";
+    bar.style.right = "";
+    bar.style.left = "12px";
+    bar.style.bottom = `${computeSafeBottomLeftOffset()}px`;
+}
+
+function bindGmBarDrag(bar) {
+    const handle = bar.querySelector(".do-cam-gm-drag-handle");
+    if (!handle) return;
+
+    handle.addEventListener("dblclick", (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        clearGmBarCustomPos();
+        positionGmBar(bar, getCameraViewsElement(), getConfig());
+        ui.notifications?.info("Barra de cámaras devuelta a su posición acoplada.");
+    });
+
+    handle.addEventListener("pointerdown", (ev) => {
+        if (ev.button !== 0) return;
+        ev.preventDefault();
+        ev.stopPropagation();
+
+        const startRect = bar.getBoundingClientRect();
+        const offsetX = ev.clientX - startRect.left;
+        const offsetY = ev.clientY - startRect.top;
+
+        if (bar.parentElement !== document.body) {
+            document.body.appendChild(bar);
+        }
+        bar.classList.remove("is-floating-auto");
+        bar.classList.add("is-floating-custom", "is-dragging");
+        bar.style.bottom = "";
+        bar.style.right = "";
+        bar.style.left = `${startRect.left}px`;
+        bar.style.top = `${startRect.top}px`;
+
+        const onPointerMove = (moveEv) => {
+            const clamped = clampGmBarCoords(bar, moveEv.clientX - offsetX, moveEv.clientY - offsetY);
+            bar.style.left = `${clamped.left}px`;
+            bar.style.top = `${clamped.top}px`;
+        };
+
+        const onPointerUp = () => {
+            window.removeEventListener("pointermove", onPointerMove);
+            window.removeEventListener("pointerup", onPointerUp);
+            bar.classList.remove("is-dragging");
+            const finalRect = bar.getBoundingClientRect();
+            saveGmBarCustomPos(finalRect.left, finalRect.top);
+        };
+
+        window.addEventListener("pointermove", onPointerMove);
+        window.addEventListener("pointerup", onPointerUp);
+    });
+}
 
 function renderOrUpdateGmBar(conf) {
     if (!game.user?.isGM) return;
 
     const camViews = getCameraViewsElement();
     if (!camViews) return;
-    const userControls = camViews.querySelector(":scope > .user-controls");
 
     let bar = document.getElementById("do-cam-gm-bar");
     if (!bar) {
@@ -1165,15 +1338,12 @@ function renderOrUpdateGmBar(conf) {
         bar.id = "do-cam-gm-bar";
     }
 
-    if (userControls && bar.nextElementSibling !== userControls) {
-        userControls.before(bar);
-    } else if (!userControls && bar.parentElement !== camViews) {
-        camViews.appendChild(bar);
-    }
-
     setClass(bar, "is-center-active", conf.active);
 
     bar.innerHTML = `
+        <span class="do-cam-gm-drag-handle" title="Arrastra para mover la barra a cualquier lugar (doble clic para devolverla a su sitio)">
+            <i class="fa-solid fa-grip-vertical"></i>
+        </span>
         <button type="button" class="do-cam-btn do-cam-gm-bar-main ${conf.active ? "do-cam-btn-success" : ""}" id="do-cam-bar-toggle" title="${conf.active ? "Devolver cámaras a la barra normal (Alt+C)" : "Activar Modo Conversación en el centro para todos (Alt+C)"}">
             <i class="fa-solid ${conf.active ? "fa-users-viewfinder" : "fa-video"}"></i>
             <span>${conf.active ? "Centro" : "Al Centro"}</span>
@@ -1191,6 +1361,17 @@ function renderOrUpdateGmBar(conf) {
             <i class="fa-solid fa-sliders"></i>
         </button>
     `;
+
+    positionGmBar(bar, camViews, conf);
+    bindGmBarDrag(bar);
+
+    if (!gmBarResizeListenerBound) {
+        gmBarResizeListenerBound = true;
+        window.addEventListener("resize", () => {
+            const currentBar = document.getElementById("do-cam-gm-bar");
+            if (currentBar) positionGmBar(currentBar, getCameraViewsElement(), getConfig());
+        });
+    }
 
     bar.querySelector("#do-cam-bar-toggle")?.addEventListener("click", async (ev) => {
         ev.preventDefault();

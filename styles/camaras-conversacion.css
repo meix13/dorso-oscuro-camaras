@@ -918,16 +918,16 @@ body.do-cam-center-active.do-cam-fullscreen #do-cam-private-banner {
 }
 
 /* ==========================================================================
-   8. BARRA DEL MÁSTER FIJA ENCIMA DE LOS CONTROLES DE CÁMARA/MICRÓFONO
+   8. BARRA DEL MÁSTER (ACOPLADA O FLOTANTE ARRASTRABLE — COMPATIBLE V12/V13/V14)
    ========================================================================== */
 
 #do-cam-gm-bar {
     width: 100%;
-    background: rgba(9, 13, 24, 0.94);
+    background: rgba(9, 13, 24, 0.95);
     border-top: 1px solid #1e293b;
     border-bottom: 1px solid #1e293b;
     padding: 3px 5px;
-    margin: 0 0 -8px 0; /* Se pega justo encima de #camera-views > .user-controls anulando el gap de 8px */
+    margin: 0 0 2px 0;
     display: flex;
     align-items: center;
     gap: 4px;
@@ -938,6 +938,32 @@ body.do-cam-center-active.do-cam-fullscreen #do-cam-private-banner {
 
 #do-cam-gm-bar.is-center-active {
     border-top-color: #10b981;
+}
+
+/* Tirador para arrastrar la barra a cualquier punto de la pantalla */
+.do-cam-gm-drag-handle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 22px;
+    color: #64748b;
+    cursor: grab;
+    flex-shrink: 0;
+    border-radius: 3px;
+    transition: color 0.15s ease, background 0.15s ease;
+    touch-action: none;
+    user-select: none;
+}
+
+.do-cam-gm-drag-handle:hover {
+    color: #38bdf8;
+    background: rgba(56, 189, 248, 0.14);
+}
+
+#do-cam-gm-bar.is-dragging .do-cam-gm-drag-handle {
+    cursor: grabbing;
+    color: #38bdf8;
 }
 
 #do-cam-gm-bar .do-cam-gm-bar-main {
@@ -959,33 +985,35 @@ body.do-cam-center-active.do-cam-fullscreen #do-cam-private-banner {
     font-size: 10.5px !important;
 }
 
-/* Si la barra de cámaras está en modo horizontal (abajo/arriba) en Modo Normal */
-#camera-views.horizontal #do-cam-gm-bar {
-    position: fixed;
-    bottom: 34px;
-    left: 0;
-    width: 280px;
-    margin: 0;
-    border-right: 1px solid #1e293b;
-    border-radius: 0 6px 0 0;
-}
-
-/* En Modo Grande (Conversación activa), la barra del Máster queda fija exactamente encima
-   de los controles de cámara/micrófono de abajo a la izquierda */
-body.do-cam-center-active:not(.do-cam-player-peek) #do-cam-gm-bar {
+/* Barra en modo flotante automático (Modo Conversación, barra horizontal o V13)
+   o posicionada manualmente por el Máster */
+#do-cam-gm-bar.is-floating-auto,
+#do-cam-gm-bar.is-floating-custom {
     position: fixed !important;
-    bottom: 34px !important;
-    left: 0 !important;
-    width: 300px !important;
-    min-width: 250px !important;
+    width: auto !important;
+    min-width: 245px !important;
+    max-width: 340px !important;
     margin: 0 !important;
-    border-right: 1px solid #1e293b !important;
-    border-radius: 0 6px 0 0 !important;
+    border: 1px solid #334155 !important;
+    border-radius: 8px !important;
+    background: rgba(9, 13, 24, 0.96) !important;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.65) !important;
     z-index: 95 !important;
 }
 
-/* Si el dock vertical está minimizado en Modo Normal, mantener la barrita legible abajo a la izquierda */
-#camera-views.minimized.vertical #do-cam-gm-bar {
+#do-cam-gm-bar.is-floating-auto.is-center-active,
+#do-cam-gm-bar.is-floating-custom.is-center-active {
+    border-color: #10b981 !important;
+}
+
+#do-cam-gm-bar.is-dragging {
+    opacity: 0.92;
+    box-shadow: 0 10px 28px rgba(56, 189, 248, 0.35) !important;
+    z-index: 10020 !important;
+}
+
+/* Si el dock vertical está minimizado en Modo Normal, mantener la barrita legible */
+#camera-views.minimized.vertical #do-cam-gm-bar:not(.is-floating-auto):not(.is-floating-custom) {
     min-width: 220px;
     border-right: 1px solid #1e293b;
     border-radius: 0 6px 0 0;
